@@ -4,29 +4,31 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0" />
 <title>手机EPUB编辑器</title>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
 :root{--primary:#4f7cff;--bg:#f6f7fb;--card:#fff;}
 *{box-sizing:border-box;}
 body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:#222;}
 header{padding:10px 12px;background:var(--primary);color:#fff;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
-header button{padding:6px 10px;border:none;border-radius:6px;background:#fff;color:var(--primary);font-weight:600;font-size:13px;}
+header button{padding:8px 12px;border:none;border-radius:6px;background:#fff;color:var(--primary);font-weight:600;font-size:14px;}
 header button.ghost{background:rgba(255,255,255,.2);color:#fff;}
-.title-input{flex:1;min-width:120px;padding:6px 8px;border:none;border-radius:6px;font-size:13px;}
-main{display:flex;height:calc(100vh - 52px);}
-aside{width:38%;max-width:240px;background:var(--card);border-right:1px solid #e5e7eb;overflow:auto;padding:6px;}
-section{flex:1;overflow:auto;padding:10px;}
-.chapter{padding:8px 10px;border-radius:8px;margin-bottom:4px;background:#f0f2f5;font-size:14px;word-break:break-all;}
+.title-input{flex:1;min-width:100px;padding:7px 10px;border:none;border-radius:6px;font-size:14px;}
+main{display:flex;height:calc(100vh - 54px);}
+aside{width:40%;max-width:240px;background:var(--card);border-right:1px solid #e5e7eb;overflow:auto;padding:6px;}
+section{flex:1;overflow:hidden;padding:10px;display:flex;flex-direction:column;}
+.chapter{padding:9px 10px;border-radius:8px;margin-bottom:4px;background:#f0f2f5;font-size:14px;word-break:break-all;}
 .chapter.active{background:#dbe3ff;color:var(--primary);font-weight:600;}
-.editor{border:1px solid #e5e7eb;border-radius:10px;padding:14px;min-height:70vh;font-size:16px;line-height:1.8;
-  overflow:auto;background:#fff;}
-.editor:focus{outline:2px solid var(--primary);}
-.editor h1{font-size:1.4em;} .editor h2{font-size:1.2em;}
+#editArea{flex:1;border:1px solid #e5e7eb;border-radius:10px;padding:14px;font-size:16px;line-height:1.8;
+  overflow:auto;background:#fff;-webkit-user-select:text;user-select:text;}
+#editArea:focus{outline:2px solid var(--primary);}
+#editArea h1{font-size:1.4em;} #editArea h2{font-size:1.2em;}
+#editArea p{margin:.6em 0;}
 .bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e5e7eb;padding:6px 10px;
-  display:flex;gap:4px;flex-wrap:wrap;font-size:12px;}
-.bar button{border:1px solid #ddd;background:#f9fafb;border-radius:4px;padding:4px 8px;}
+  display:none;gap:4px;flex-wrap:wrap;font-size:12px;z-index:10;}
+.bar button{border:1px solid #ddd;background:#f9fafb;border-radius:4px;padding:5px 9px;}
+#welcome{flex:1;display:flex;align-items:center;justify-content:center;color:#999;text-align:center;padding:30px;line-height:1.8;}
+#errBox{display:none;position:fixed;top:54px;left:0;right:0;background:#fee;border:1px solid #f99;color:#c00;
+  padding:10px;font-size:12px;z-index:100;white-space:pre-wrap;max-height:40vh;overflow:auto;}
 .hint{font-size:12px;color:#888;padding:6px 2px;}
-@media(max-width:600px){aside{width:42%;} .editor{font-size:15px;}}
 </style>
 </head>
 <body>
@@ -36,196 +38,196 @@ section{flex:1;overflow:auto;padding:10px;}
   <button class="ghost" onclick="newBook()">➕ 新建</button>
   <input id="bookTitle" class="title-input" placeholder="书名（自动保存）" />
 </header>
+<div id="errBox"></div>
 <main>
   <aside id="sidebar">
     <div class="hint">目录 / 章节</div>
     <div id="chapters"></div>
   </aside>
   <section>
-    <div id="welcome" style="padding:30px;text-align:center;color:#999;">
-      点左上角「📂 打开EPUB」选择一本电子书开始编辑。<br/><br/>
-      你的修改会自动保存在手机浏览器里，关闭网页后再打开，书还在。
-    </div>
-    <div id="editArea" class="editor" style="display:none;" contenteditable="true"></div>
+    <div id="welcome">点左上角「📂 打开EPUB」选择一本电子书开始编辑。<br/><br/>修改会自动存在手机浏览器里，关掉网页再打开，书还在。</div>
+    <div id="editArea" contenteditable="true" style="display:none;"></div>
   </section>
 </main>
-<div class="bar" id="toolbar" style="display:none;">
+<div class="bar" id="toolbar">
   <button onclick="fmt('bold')">加粗</button>
   <button onclick="fmt('italic')">斜体</button>
   <button onclick="fmt('insertUnorderedList')">• 列表</button>
   <button onclick="fmt('formatBlock','h1')">大标题</button>
   <button onclick="fmt('formatBlock','h2')">小标题</button>
   <button onclick="fmt('formatBlock','p')">正文</button>
-  <button onclick="saveNow()">💾 立即保存</button>
+  <button onclick="saveNow()">💾 保存</button>
 </div>
 
+<!-- JSZip 多 CDN 备胎加载 -->
 <script>
-let zip=null, files={}, chapters=[], currentPath=null, currentScroll=0;
-const DB_NAME='epub_editor_db', STORE='books', KEY='current';
+window.jszipReady = false;
+function showErr(msg){var b=document.getElementById('errBox');b.style.display='block';b.textContent='出错：'+msg;}
+window.onerror=function(m){showErr(m);};
 
-/* ---------- IndexedDB 持久化 ---------- */
-function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,1);
-  r.onupgradeneeded=e=>e.target.result.createObjectStore(STORE);
-  r.onsuccess=e=>res(e.target.result); r.onerror=e=>rej(e);});}
-async function dbPut(key,val){const db=await openDB();return new Promise((res,rej)={
-  const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(val,key);
-  tx.oncomplete=()=>res();tx.onerror=()=>rej();});}
-async function dbGet(key){const db=await openDB();return new Promise((res,rej)={
-  const tx=db.transaction(STORE,'readonly');const rq=tx.objectStore(STORE).get(key);
-  rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej();});}
-async function dbDel(key){const db=await openDB();return new Promise((res)={
-  const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(key);
-  tx.oncomplete=()=>res();});}
-
-/* ---------- 打开EPUB ---------- */
-async function openEpub(){
-  const inp=document.createElement('input');
-  inp.type='file';inp.accept='.epub';
-  inp.onchange=async e=>{
-    try{
-      const buf=await e.target.files[0].arrayBuffer();
-      zip=await JSZip.loadAsync(buf);
-      files={};
-      for(const n of Object.keys(zip.files)){
-        if(!zip.files[n].dir) files[n]=await zip.files[n].async('text');
-      }
-      // 从 content.opf 找 spine 顺序
-      const opfPath=Object.keys(files).find(f=>f.endsWith('.opf'));
-      let chapterPaths=[];
-      if(opfPath){
-        const opf=files[opfPath];
-        const spineMatch=opf.match(/<spine[^>]*>([\s\S]*?)<\/spine>/i);
-        if(spineMatch){
-          const ids=[...spineMatch[1].matchAll(/itemref[^>]*idref="([^"]+)"/gi)].map(m=>m[1]);
-          const manifest=[...opf.matchAll(/<item[^>]*id="([^"]+)"[^>]*href="([^"]+)"[^>]*>/gi)];
-          const idToHref={};
-          manifest.forEach(m=>{idToHref[m[1]]=m[2];});
-          const base=opfPath.includes('/')?opfPath.substring(0,opfPath.lastIndexOf('/')+1):'';
-          ids.forEach(id=>{
-            let href=idToHref[id];
-            if(href){ const full=base+href; if(files[full]!==undefined) chapterPaths.push(full); }
-          });
-        }
-      }
-      // 没解析到就用所有 xhtml/html
-      if(chapterPaths.length===0)
-        chapterPaths=Object.keys(files).filter(f=>/\.(xhtml|html)$/.test(f));
-      chapters=chapterPaths;
-      document.getElementById('bookTitle').value=
-        (files[opfPath]&&files[opfPath].match(/<dc:title>([^<]*)<\/dc:title>/i)?RegExp.$1:'未命名')||'未命名';
-      renderChapters();
-      selectChapter(0);
-      await persist();
-      alert('打开成功！现在可以直接点正文改字了。\n你的修改会自动保存，关掉网页再打开，书还在。');
-    }catch(err){alert('打开失败：'+err.message);}
-  };
-  inp.click();
+function loadScript(urls, i){
+  i=i||0;
+  if(i>=urls.length){showErr('JSZip库加载失败，可能是网络问题。请在WiFi下重试，或换个网络。');return;}
+  var s=document.createElement('script');
+  s.src=urls[i];
+  s.onload=function(){window.jszipReady=true;initApp();};
+  s.onerror=function(){loadScript(urls,i+1);};
+  document.head.appendChild(s);
 }
+loadScript([
+  'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',
+  'https://unpkg.com/jszip@3.10.1/dist/jszip.min.js',
+  'https://cdn.bootcdn.net/ajax/libs/jszip/3.10.1/jszip.min.js',
+  'https://lib.baomitu.com/jszip/3.10.1/jszip.min.js'
+]);
 
-/* ---------- 渲染章节列表 ---------- */
-function renderChapters(){
-  const box=document.getElementById('chapters');
-  box.innerHTML='';
-  chapters.forEach((p,i)=>{
-    // 从文件内容里抓第一个 <h1> 或 <title> 作为章节名
-    let name=p.split('/').pop();
-    const html=files[p]||'';
-    const h1=html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)||html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-    if(h1){const tmp=document.createElement('div');tmp.innerHTML=h1[1];name=tmp.textContent.trim().slice(0,30)||name;}
-    const d=document.createElement('div');
-    d.className='chapter'+(p===currentPath?' active':'');
-    d.textContent=(i+1)+'. '+name;
-    d.onclick=()=>selectChapter(i);
-    box.appendChild(d);
+function initApp(){
+  var zip=null, files={}, chapters=[], currentPath=null;
+  var DB_NAME='epub_editor_db', STORE='books', KEY='current';
+
+  function openDB(){return new Promise(function(res,rej){var r=indexedDB.open(DB_NAME,1);
+    r.onupgradeneeded=function(e){e.target.result.createObjectStore(STORE);};
+    r.onsuccess=function(e){res(e.target.result);};
+    r.onerror=function(e){rej(e);};});}
+  function dbPut(key,val){return openDB().then(function(db){return new Promise(function(res){
+    var tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(val,key);
+    tx.oncomplete=function(){res();};});});}
+  function dbGet(key){return openDB().then(function(db){return new Promise(function(res){
+    var tx=db.transaction(STORE,'readonly');var rq=tx.objectStore(STORE).get(key);
+    rq.onsuccess=function(){res(rq.result);};});});}
+
+  window.openEpub=function(){
+    var inp=document.createElement('input');
+    inp.type='file';inp.accept='.epub';
+    inp.onchange=function(e){
+      if(!window.JSZip){showErr('JSZip未加载，无法打开EPUB');return;}
+      e.target.files[0].arrayBuffer().then(function(buf){
+        return window.JSZip.loadAsync(buf);
+      }).then(function(z){
+        zip=z;files={};
+        var keys=Object.keys(z.files);
+        var p=[];
+        keys.forEach(function(n){if(!z.files[n].dir)p.push(z.files[n].async('text').then(function(t){files[n]=t;}));});
+        return Promise.all(p).then(function(){
+          var opfPath=Object.keys(files).find(function(f){return f.endsWith('.opf');});
+          var chapterPaths=[];
+          if(opfPath){
+            var opf=files[opfPath];
+            var sm=opf.match(/<spine[\s\S]*?>([\s\S]*?)<\/spine>/i);
+            if(sm){
+              var ids=(sm[1].match(/idref="([^"]+)"/g)||[]).map(function(x){return x.replace(/.*"([^"]+)".*/,'$1');});
+              var base=opfPath.indexOf('/')>-1?opfPath.substring(0,opfPath.lastIndexOf('/')+1):'';
+              ids.forEach(function(id){
+                var m=opf.match(new RegExp('id="'+id+'"[^>]*href="([^"]+)"','i'));
+                if(m){var full=base+m[1];if(files[full]!==undefined)chapterPaths.push(full);}
+              });
+            }
+          }
+          if(!chapterPaths.length)
+            chapterPaths=Object.keys(files).filter(function(f){return /\.(xhtml|html)$/.test(f);});
+          chapters=chapterPaths;
+          document.getElementById('bookTitle').value=
+            (files[opfPath]&&files[opfPath].match(/<dc:title>([^<]*)<\/dc:title>/i)?RegExp.$1:'未命名')||'未命名';
+          renderChapters();selectChapter(0);persist();
+          alert('打开成功！现在可以直接点正文改字。\n修改会自动保存，关掉网页再打开书还在。');
+        });
+      }).catch(function(err){showErr('打开失败：'+err.message);});
+    };
+    inp.click();
+  };
+
+  function renderChapters(){
+    var box=document.getElementById('chapters');box.innerHTML='';
+    chapters.forEach(function(p,i){
+      var name=p.split('/').pop();
+      var html=files[p]||'';
+      var h1=html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)||html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+      if(h1){var tmp=document.createElement('div');tmp.innerHTML=h1[1];name=(tmp.textContent.trim().slice(0,30))||name;}
+      var d=document.createElement('div');
+      d.className='chapter'+(p===currentPath?' active':'');
+      d.textContent=(i+1)+'. '+name;
+      d.onclick=function(){selectChapter(i);};
+      box.appendChild(d);
+    });
+  }
+
+  window.selectChapter=function(idx){
+    if(currentPath){files[currentPath]=wrapBody(document.getElementById('editArea').innerHTML);persist();}
+    currentPath=chapters[idx];
+    document.getElementById('welcome').style.display='none';
+    document.getElementById('editArea').style.display='block';
+    document.getElementById('toolbar').style.display='flex';
+    var chs=document.querySelectorAll('.chapter');
+    chs.forEach(function(c,i){c.classList.toggle('active',i===idx);});
+    var raw=files[currentPath]||'';
+    var bm=raw.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    document.getElementById('editArea').innerHTML=bm?bm[1]:raw;
+    document.getElementById('editArea').onscroll=function(){};
+    document.getElementById('editArea').oninput=function(){
+      files[currentPath]=wrapBody(this.innerHTML);debouncePersist();
+    };
+  };
+
+  function wrapBody(inner){
+    return '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>'+
+      '<html xmlns="http://www.w3.org/1999/xhtml"><head><meta charset="UTF-8"/>'+
+      '<title>'+(document.getElementById('bookTitle').value||'未命名')+'</title></head><body>'+inner+'</body></html>';
+  }
+
+  window.fmt=function(cmd,val){
+    document.execCommand(cmd,false,val);
+    if(currentPath){files[currentPath]=wrapBody(document.getElementById('editArea').innerHTML);debouncePersist();}
+  };
+
+  window.saveNow=function(){
+    if(currentPath)files[currentPath]=wrapBody(document.getElementById('editArea').innerHTML);
+    persist().then(function(){alert('已保存！');});
+  };
+
+  window.newBook=function(){
+    files={
+      'mimetype':'application/epub+zip',
+      'META-INF/container.xml':'<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>',
+      'OEBPS/content.opf':'<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="BookId"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>未命名</dc:title><dc:creator>作者</dc:creator></metadata><manifest><item id="chap1" href="chap1.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="chap1"/></spine></package>',
+      'OEBPS/chap1.xhtml':wrapBody('<h1>第一章</h1><p>在这里开始写正文……</p>')
+    };
+    zip={};chapters=['OEBPS/chap1.xhtml'];currentPath=null;
+    document.getElementById('bookTitle').value='未命名';
+    renderChapters();selectChapter(0);persist();
+  };
+
+  window.exportEpub=function(){
+    if(!currentPath)return;
+    files[currentPath]=wrapBody(document.getElementById('editArea').innerHTML);
+    var z=new JSZip();
+    z.file('mimetype',files['mimetype'],{compression:'STORE'});
+    Object.keys(files).forEach(function(k){if(k!=='mimetype')z.file(k,files[k]);});
+    z.generateAsync({type:'blob',compression:'DEFLATE'}).then(function(blob){
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=(document.getElementById('bookTitle').value||'book')+'.epub';
+      a.click();alert('已导出下载！');
+    });
+  };
+
+  var _d=null;
+  function debouncePersist(){clearTimeout(_d);_d=setTimeout(persist,800);}
+  function persist(){
+    if(!zip)return Promise.resolve();
+    return dbPut(KEY,{files:files,chapters:chapters,currentPath:currentPath,
+      title:document.getElementById('bookTitle').value,ts:Date.now()});
+  }
+  document.getElementById('bookTitle').oninput=debouncePersist;
+
+  // 启动恢复
+  dbGet(KEY).then(function(saved){
+    if(saved&&saved.files&&Object.keys(saved.files).length){
+      files=saved.files;chapters=saved.chapters||[];currentPath=saved.currentPath;zip={};
+      document.getElementById('bookTitle').value=saved.title||'未命名';
+      if(chapters.length){renderChapters();selectChapter(chapters.indexOf(currentPath)>=0?chapters.indexOf(currentPath):0);}
+    }
   });
 }
-
-/* ---------- 选择章节（所见即所得） ---------- */
-function selectChapter(idx){
-  if(currentPath){ // 保存上一章
-    files[currentPath]=document.getElementById('editArea').innerHTML;
-    persist();
-  }
-  currentPath=chapters[idx];
-  document.getElementById('welcome').style.display='none';
-  document.getElementById('editArea').style.display='block';
-  document.getElementById('toolbar').style.display='flex';
-  document.querySelectorAll('.chapter').forEach((c,i)=>c.classList.toggle('active',i===idx));
-  // 把 xhtml 内容塞进可编辑区（浏览器会自动渲染成可见正文）
-  const raw=files[currentPath]||'';
-  const bodyMatch=raw.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  document.getElementById('editArea').innerHTML=bodyMatch?bodyMatch[1]:raw;
-  document.getElementById('editArea').onscroll=()=>{currentScroll=document.getElementById('editArea').scrollTop;};
-  document.getElementById('editArea').scrollTop=currentScroll;
-  // 编辑时自动保存
-  document.getElementById('editArea').oninput=()=>{
-    files[currentPath]=wrapBody(document.getElementById('editArea').innerHTML);
-    debouncePersist();
-  };
-}
-
-function wrapBody(inner){
-  // 把编辑区内容包回完整 xhtml
-  return '<?xml version="1.0" encoding="UTF-8"?>\n'+
-    '<!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml">\n<head><meta charset="UTF-8"/>\n'+
-    '<title>'+document.getElementById('bookTitle').value+'</title>\n</head>\n<body>\n'+inner+'\n</body>\n</html>';
-}
-
-/* ---------- 格式化按钮 ---------- */
-function fmt(cmd,val){document.execCommand(cmd,false,val);
-  files[currentPath]=wrapBody(document.getElementById('editArea').innerHTML);
-  debouncePersist();}
-
-/* ---------- 新建空白书 ---------- */
-function newBook(){
-  files={
-    'mimetype':'application/epub+zip',
-    'META-INF/container.xml':'<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>',
-    'OEBPS/content.opf':'<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="BookId"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>未命名</dc:title><dc:creator>作者</dc:creator></metadata><manifest><item id="chap1" href="chap1.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="chap1"/></spine></package>',
-    'OEBPS/chap1.xhtml':wrapBody('<h1>第一章</h1><p>在这里开始写正文……</p>')
-  };
-  zip={};chapters=['OEBPS/chap1.xhtml'];currentPath=null;
-  document.getElementById('bookTitle').value='未命名';
-  renderChapters();selectChapter(0);persist();
-}
-
-/* ---------- 导出EPUB ---------- */
-async function exportEpub(){
-  if(!currentPath)return;
-  files[currentPath]=wrapBody(document.getElementById('editArea').innerHTML);
-  const z=new JSZip();
-  // mimetype 必须第一个、不压缩
-  z.file('mimetype',files['mimetype'],{compression:'STORE'});
-  Object.keys(files).forEach(k=>{if(k!=='mimetype')z.file(k,files[k]);});
-  const blob=await z.generateAsync({type:'blob',compression:'DEFLATE'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=(document.getElementById('bookTitle').value||'book')+'.epub';
-  a.click();
-  alert('已导出！文件已下载到手机。');
-}
-
-/* ---------- 持久化（关键：整本书存进IndexedDB） ---------- */
-let _debounce=null;
-function debouncePersist(){clearTimeout(_debounce);_debounce=setTimeout(persist,800);}
-async function persist(){
-  if(!zip)return;
-  await dbPut(KEY,{files,chapters,currentPath,
-    title:document.getElementById('bookTitle').value,ts:Date.now()});
-}
-document.getElementById('bookTitle').oninput=()=>debouncePersist();
-
-/* ---------- 启动恢复 ---------- */
-(async()=>{
-  const saved=await dbGet(KEY);
-  if(saved&&saved.files&&Object.keys(saved.files).length){
-    files=saved.files;chapters=saved.chapters||[];currentPath=saved.currentPath;
-    zip={};
-    document.getElementById('bookTitle').value=saved.title||'未命名';
-    if(chapters.length){renderChapters();selectChapter(chapters.indexOf(currentPath)>=0?chapters.indexOf(currentPath):0);}
-    console.log('已从浏览器恢复上次编辑的书籍');
-  }
-})();
 </script>
 </body>
 </html>
