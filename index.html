@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>EPUB 编辑器（手机版）</title>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+:root {
+  --bg: #f6f7fb;
+  --card: #ffffff;
+  --primary: #4f7cff;
+}
+body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto; background:var(--bg); }
+header { padding:12px; background:var(--primary); color:#fff; display:flex; gap:8px; flex-wrap:wrap; }
+header button { padding:6px 10px; border-radius:6px; border:none; background:#fff; color:var(--primary); font-weight:600; }
+main { display:flex; height:calc(100vh - 56px); }
+aside { width:220px; background:var(--card); border-right:1px solid #ddd; overflow:auto; padding:8px; }
+section { flex:1; padding:8px; overflow:auto; }
+.card { background:var(--card); border-radius:10px; padding:10px; margin-bottom:8px; }
+input,textarea { width:100%; box-sizing:border-box; padding:8px; border-radius:8px; border:1px solid #ccc; font-size:15px; }
+textarea { height:60vh; resize:none; }
+.chapter { padding:6px; border-radius:6px; margin-bottom:4px; background:#f0f2f5; }
+.chapter.active { background:#dbe3ff; }
+.toc-item { margin-left:12px; }
+@media (max-width:600px) {
+  aside { width:140px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <button onclick="openEpub()">打开 EPUB</button>
+  <button onclick="exportEpub()">导出 EPUB</button>
+  <button onclick="newBook()">新建</button>
+</header>
+<main>
+  <aside id="sidebar">
+    <div class="card"><b>章节</b></div>
+    <div id="chapters"></div>
+    <div class="card"><b>目录</b></div>
+    <div id="toc"></div>
+  </aside>
+  <section>
+    <div class="card">
+      <input id="title" placeholder="书名" />
+      <input id="author" placeholder="作者" style="margin-top:6px;" />
+    </div>
+    <div class="card">
+      <textarea id="editor" placeholder="选择章节后在此编辑正文…"></textarea>
+    </div>
+  </section>
+</main>
+
+<script>
+let zip = null;
+let files = {};
+let currentChapter = null;
+const DB_KEY = 'epub_draft';
+
+/* 打开 EPUB */
+function openEpub() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.epub';
+  input.onchange = async e => {
+    const buf = await e.target.files[0].arrayBuffer();
+    zip = await JSZip.loadAsync(buf);
+    files = {};
+    for (const name of Object.keys(zip.files)) {
+      if (!zip.files[name].dir) files[name] = await zip.files[name].async('text');
+    }
+    renderChapters();
+    renderToc();
+    loadMeta();
+    saveDraft();
+  };
+  input.click();
+}
+
+/* 渲染章节 */
+function renderChapters() {
+  const box = document.getElementById('chapters');
+  box.innerHTML = '';
+  Object.keys(files).filter(f=>f.endsWith('.xhtml')||f.endsWith('.html')).forEach(f=>{
+    const d = document.createElement('div');
+    d.className = 'chapter';
+    d.textContent = f.split('/').pop();
+    d.onclick = ()=>selectChapter(f,d);
+    box.appendChild(d);
+  });
+}
+
+/* 选择章节 */
+function selectChapter(path,el) {
+  document.querySelectorAll('.chapter').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  currentChapter = path;
+  document.getElementById('editor').value = files[path]||'';
+  document.getElementById('editor').oninput = ()=>{
+    files[path]=document.getElementById('editor').value;
+    saveDraft();
+  };
+}
+
+/* 渲染目录（只读） */
+function renderToc() {
+  const box = document.getElementById('toc');
+  box.innerHTML = '';
+  Object.keys(files).filter(f=>f.includes('toc')||f.includes('nav')).forEach(f=>{
+    const d=document.createElement('div');
+    d.textContent = f.split('/').pop();
+    d.className='toc-item';
+    box.appendChild(d);
+  });
+}
+
+/* 元数据 */
+function loadMeta() {
+  document.getElementById('title').value = '';
+  document.getElementById('author').value = '';
+}
+document.getElementById('title').oninput = saveDraft;
+document.getElementById('author').oninput = saveDraft;
+
+/* 保存草稿到 IndexedDB */
+function saveDraft() {
+  if(!zip) return;
+  const data = { files, meta:{ title:title.value, author:author.value }, currentChapter };
+  const req = indexedDB.open('epub_db',1);
+  req.onupgradeneeded = e=>e.target.result.createObjectStore('drafts');
+  req.onsuccess = e=>{
+    const db=e.target.result.transaction('drafts','readwrite').objectStore('drafts').put(data,DB_KEY);
+  };
+}
+
+/* 恢复草稿 */
+function restoreDraft() {
+  const req = indexedDB.open('epub_db',1);
+  req.onsuccess = e=>{
+    const db=e.target.result.transaction('drafts').objectStore('drafts').get(DB_KEY);
+    db.onsuccess = ev=>{
+      const d=ev.target.result; if(!d) return;
+      files=d.files; zip={};
+      title.value=d.meta?.title||'';
+      author.value=d.meta?.author||'';
+      renderChapters();
+      if(d.currentChapter) {
+        const el=[...document.querySelectorAll('.chapter')].find(c=>c.textContent===d.currentChapter.split('/').pop());
+        if(el) selectChapter(d.currentChapter,el);
+      }
+      renderToc();
+    };
+  };
+}
+
+/* 新建 */
+function newBook() {
+  files = {
+    'mimetype':'application/epub+zip',
+    'META-INF/container.xml':'<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>',
+    'OEBPS/content.opf':'<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="BookId"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>未命名</dc:title><dc:creator>作者</dc:creator></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="chap1" href="chap1.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="chap1"/></spine></package>',
+    'OEBPS/nav.xhtml':'<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>目录</title></head><body><nav epub:type="toc"><ol><li><a href="chap1.xhtml">第一章</a></li></ol></nav></body></html>',
+    'OEBPS/chap1.xhtml':'<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml"><body><h1>第一章</h1><p>正文内容…</p></body></html>'
+  };
+  zip={};
+  renderChapters(); renderToc(); loadMeta(); saveDraft();
+}
+
+/* 导出 EPUB */
+async function exportEpub() {
+  const z = new JSZip();
+  Object.keys(files).forEach(k=>z.file(k,files[k]));
+  const blob = await z.generateAsync({type:'blob', compression:'DEFLATE'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='edited.epub'; a.click();
+}
+
+/* 启动恢复 */
+restoreDraft();
+</script>
+</body>
+</html>
