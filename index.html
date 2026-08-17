@@ -3,454 +3,559 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6feb">
 <title>EPUB 分章工具 V5</title>
 <script src="jszip.min.js"></script>
 <style>
-  :root{--blue:#2f6feb;--blue-d:#1f55c4;--ink:#1a1a1a;--sub:#6b7280;--line:#e5e7eb;--bg:#f3f4f6;--card:#fff}
+  :root{
+    --blue:#1f6feb; --blue-d:#1858c4; --ink:#1a1a1a; --sub:#666;
+    --line:#e3e6ea; --bg:#f6f8fa; --card:#fff; --warn:#b8860b; --err:#c0392b;
+    --bar-h:52px; --tool-h:46px;
+  }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
-  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);font-size:15px;padding-top:108px;padding-bottom:24px}
-  /* 顶部固定工具栏 */
-  #topbar{position:fixed;top:0;left:0;right:0;z-index:60;background:var(--blue);color:#fff;display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;box-shadow:0 2px 6px rgba(0,0,0,.15);align-items:center}
-  #burger{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:7px;padding:7px 11px;font-size:16px;cursor:pointer;margin-right:4px}
-  #burger:active{background:rgba(255,255,255,.32)}
-  #topbar .tbtn{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:7px;padding:7px 11px;font-size:13px;cursor:pointer;white-space:nowrap}
-  #topbar .tbtn:active{background:rgba(255,255,255,.32)}
-  #topbar .spacer{flex:1}
-  /* 富文本格式工具栏（固定置于顶部工具栏下方） */
-  #formbar{position:fixed;top:48px;left:0;right:0;z-index:59;background:#fff;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;overflow-x:auto}
-  #formbar button{font-size:13px;padding:5px 9px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer}
-  #formbar button:active{background:#eef3ff}
-  /* 抽屉式侧栏 */
-  #scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:70;display:none}
-  #scrim.show{display:block}
-  #sidebar{position:fixed;top:0;bottom:0;left:0;width:300px;max-width:88vw;background:var(--card);border-right:1px solid var(--line);z-index:71;transform:translateX(-100%);transition:transform .25s ease;overflow-y:auto;padding:12px}
-  #sidebar.open{transform:translateX(0)}
-  #closeSide{position:sticky;top:0;background:var(--card);display:flex;justify-content:flex-end;padding-bottom:6px;border-bottom:1px solid var(--line);margin-bottom:6px}
-  #closeSide button{background:0;border:0;font-size:20px;color:var(--sub);cursor:pointer}
-  #main{display:flex;gap:0}
-  #content{flex:1;padding:12px;min-width:0}
-  .sec-title{font-weight:700;font-size:14px;color:var(--sub);margin:6px 2px 8px}
-  .ch-item{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:14px;border:1px solid transparent}
-  .ch-item:hover{background:#eef3ff}
-  .ch-item.active{background:#e3ecff;border-color:#c7d8ff;font-weight:700}
-  .ch-item .ch-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .ch-item .cnt{color:var(--sub);font-size:11px;white-space:nowrap}
-  .ch-item .merge{font-size:11px;padding:2px 6px;border:1px solid var(--line);border-radius:5px;background:#fff;cursor:pointer;color:var(--blue)}
-  .ch-item .del{font-size:13px;color:#d33;background:0;border:0;cursor:pointer;padding:0 4px}
-  .add-btn{width:100%;margin-top:8px;padding:8px;border:1px dashed var(--blue);background:#f6f9ff;color:var(--blue);border-radius:8px;cursor:pointer;font-size:13px}
-  .add-btn:active{background:#e3ecff}
-  .tabs{display:flex;gap:0;border-bottom:2px solid var(--line);margin-bottom:10px}
-  .tab{padding:8px 12px;cursor:pointer;font-size:14px;color:var(--sub);border-bottom:2px solid transparent;margin-bottom:-2px}
-  .tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:700}
-  .panel{display:none}
-  .panel.active{display:block}
-  .meta-row{display:flex;align-items:center;gap:8px;margin:6px 0}
-  .meta-row label{width:60px;color:var(--sub);font-size:13px}
-  .meta-row input{flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:14px}
-  .toc-item{display:flex;align-items:center;gap:6px;padding:5px 4px;border-bottom:1px dashed var(--line);font-size:13px}
-  .toc-item input{flex:1;padding:5px 7px;border:1px solid var(--line);border-radius:5px;font-size:13px}
-  .toc-item select{padding:5px;border:1px solid var(--line);border-radius:5px;font-size:12px}
-  .toc-item .tdel{color:#d33;background:0;border:0;cursor:pointer;font-size:14px}
-  .editor{border:1px solid var(--line);border-radius:9px;background:#fff;padding:12px;min-height:55vh;outline:0;line-height:1.8;word-break:break-word;scroll-margin-top:120px}
-  .editor:focus{box-shadow:0 0 0 2px #c7d8ff}
-  /* 可视化 me/ta 容器（仅新建章节使用，导出时转回标准 div.me/ta） */
-  .me-box{background:#eef7ee;border:1px solid #cfe6cf;border-radius:8px;padding:8px 10px;margin:8px 0}
-  .me-box .lbl{font-size:12px;color:#2e7d32;font-weight:700;margin-bottom:4px}
-  .ta-box{background:#eef2ff;border:1px solid #d4dcf5;border-radius:8px;padding:8px 10px;margin:8px 0}
-  .ta-box .lbl{font-size:12px;color:#2f6feb;font-weight:700;margin-bottom:4px}
-  .me-edit,.ta-edit{min-height:40px;outline:0;white-space:pre-wrap}
-  #toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:rgba(20,20,20,.88);color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;z-index:200;display:none;max-width:90vw;text-align:center}
-  #toast.show{display:block}
-  .stat{font-size:12px;color:var(--sub);margin:4px 2px 8px}
-  .help{font-size:12px;color:var(--sub);line-height:1.6;background:#f6f9ff;border:1px solid #e3ecff;border-radius:8px;padding:8px 10px;margin-top:8px}
-  @media(max-width:760px){
-    #content{padding:10px}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--ink);font-size:15px;line-height:1.7;
+    padding-top:calc(var(--bar-h) + var(--tool-h)); /* 为 fixed 双栏留位 */
+    -webkit-text-size-adjust:100%;
   }
+  /* ===== 顶部固定蓝色功能栏 ===== */
+  #topbar{
+    position:fixed;top:0;left:0;right:0;height:var(--bar-h);z-index:60;
+    background:var(--blue);color:#fff;display:flex;align-items:center;
+    padding:0 8px;gap:6px;box-shadow:0 2px 6px rgba(0,0,0,.12);
+  }
+  #topbar .tbtn{
+    background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:8px;
+    padding:7px 10px;font-size:13px;cursor:pointer;white-space:nowrap;
+    display:inline-flex;align-items:center;gap:4px;
+  }
+  #topbar .tbtn:active{background:rgba(255,255,255,.3)}
+  #topbar .spacer{flex:1}
+  #topbar .title{font-weight:700;font-size:15px;letter-spacing:.3px;white-space:nowrap}
+  /* ===== 顶部固定工具栏（撤销/加粗等） ===== */
+  #toolbar{
+    position:fixed;top:var(--bar-h);left:0;right:0;height:var(--tool-h);z-index:55;
+    background:var(--card);border-bottom:1px solid var(--line);
+    display:flex;align-items:center;padding:0 6px;gap:2px;overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #toolbar button{
+    flex:0 0 auto;background:transparent;border:0;border-radius:7px;
+    padding:6px 9px;font-size:14px;cursor:pointer;color:var(--ink);white-space:nowrap;
+  }
+  #toolbar button:active{background:var(--bg)}
+  #toolbar .sep{width:1px;height:24px;background:var(--line);margin:0 4px;flex:0 0 auto}
+  /* ===== 主布局 ===== */
+  #app{display:flex;min-height:calc(100vh - var(--bar-h) - var(--tool-h))}
+  #sidebar{
+    width:250px;flex:0 0 250px;background:var(--card);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;max-height:calc(100vh - var(--bar-h) - var(--tool-h));
+  }
+  #sideTabs{display:flex;border-bottom:1px solid var(--line)}
+  #sideTabs .tab{flex:1;text-align:center;padding:9px 4px;font-size:13px;cursor:pointer;color:var(--sub);background:transparent;border:0;border-bottom:2px solid transparent}
+  #sideTabs .tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:700}
+  .side-body{flex:1;overflow-y:auto;padding:8px}
+  .side-body.hidden{display:none}
+  .ch-item{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:13px;border:1px solid transparent}
+  .ch-item:hover{background:var(--bg)}
+  .ch-item.active{background:#e8f0fe;color:var(--blue);border-color:#c5d8fb}
+  .ch-item .ch-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ch-item .ch-count{color:var(--sub);font-size:11px;flex:0 0 auto}
+  .ch-item .ch-merge{flex:0 0 auto;background:var(--blue);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer}
+  .ch-item .ch-del{flex:0 0 auto;background:transparent;color:var(--err);border:0;font-size:14px;cursor:pointer;padding:2px 4px}
+  .add-chapter{margin-top:8px;width:100%;background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:8px;font-size:13px;color:var(--sub);cursor:pointer}
+  .add-chapter:active{background:#eef2f7}
+  .toc-item{display:flex;align-items:center;gap:6px;padding:5px 4px;font-size:12px;border-bottom:1px dashed var(--line)}
+  .toc-item input{flex:1;border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:12px;min-width:0}
+  .toc-item select{flex:0 0 auto;border:1px solid var(--line);border-radius:6px;padding:4px;font-size:12px;max-width:90px}
+  .toc-item .tdel{flex:0 0 auto;background:transparent;color:var(--err);border:0;font-size:13px;cursor:pointer}
+  .meta-field{margin-bottom:8px}
+  .meta-field label{display:block;font-size:12px;color:var(--sub);margin-bottom:3px}
+  .meta-field input{width:100%;border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:13px}
+  /* ===== 编辑区 ===== */
+  #editorWrap{flex:1;display:flex;flex-direction:column;min-width:0}
+  #editorHead{padding:10px 14px 4px;background:var(--card);border-bottom:1px solid var(--line)}
+  #edTitle{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:16px;font-weight:700}
+  #edInfo{font-size:11px;color:var(--sub);margin-top:4px}
+  #editor{flex:1;padding:14px;outline:none;overflow-y:auto;background:var(--card);min-height:300px}
+  #editor:focus{box-shadow:inset 0 0 0 2px #d6e4ff}
+  /* me/ta 浮动标签标识（伪双栏） */
+  #editor .me, #editor .ta{position:relative;border-radius:8px;padding:8px 10px;margin:6px 0}
+  #editor .me{background:#f0f7ff;border-left:3px solid #4a90e2}
+  #editor .ta{background:#fff6ee;border-left:3px solid #e2a04a}
+  #editor .me::before, #editor .ta::before{
+    position:absolute;top:-9px;left:8px;font-size:10px;padding:1px 6px;border-radius:5px;
+    color:#fff;letter-spacing:.5px;
+  }
+  #editor .me::before{content:"我 · Me";background:#4a90e2}
+  #editor .ta::before{content:"TA · AI";background:#e2a04a}
+  #editor .me > .who, #editor .ta > .who{font-weight:700;color:var(--sub);font-size:12px;margin-bottom:2px;display:block}
+  /* ===== Toast / 提示 ===== */
+  #toast{position:fixed;left:50%;bottom:32px;transform:translateX(-50%);background:rgba(20,20,20,.92);color:#fff;padding:9px 16px;border-radius:9px;font-size:13px;z-index:200;display:none;max-width:86vw;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+  #toast.show{display:block}
+  /* 恢复提醒栏 */
+  #restoreBar{position:fixed;top:var(--bar-h);left:0;right:0;z-index:58;background:#fff8e1;border-bottom:2px solid var(--warn);padding:8px 12px;display:none;align-items:center;gap:8px;font-size:13px}
+  #restoreBar.show{display:flex}
+  #restoreBar button{background:var(--warn);color:#fff;border:0;border-radius:7px;padding:5px 11px;font-size:12px;cursor:pointer}
+  #restoreBar .rno{background:transparent;color:var(--sub)}
+  /* Loading */
+  #loading{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.78);z-index:300;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+  #loading.show{display:flex}
+  #loading .sp{width:34px;height:34px;border:4px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* ===== 响应式：手机 ===== */
+  @media (max-width:760px){
+    #sidebar{position:fixed;top:calc(var(--bar-h) + var(--tool-h));left:0;bottom:0;width:82vw;max-width:300px;z-index:70;transform:translateX(-105%);transition:transform .25s ease;box-shadow:4px 0 16px rgba(0,0,0,.12)}
+    #sidebar.open{transform:translateX(0)}
+    #scrim{display:none;position:fixed;top:calc(var(--bar-h) + var(--tool-h));left:0;right:0;bottom:0;background:rgba(0,0,0,.32);z-index:65}
+    #scrim.show{display:block}
+    #menuBtn{display:inline-flex !important}
+  }
+  #menuBtn{display:none}
+  /* 隐藏旧文件树细节，保持简洁 */
+  .filetree{font-size:11px;color:var(--sub);word-break:break-all}
 </style>
 </head>
 <body>
 
 <div id="topbar">
-  <button id="burger" title="打开章节面板">☰</button>
-  <button class="tbtn" id="btnImport">📂 导入</button>
-  <input type="file" id="fileInput" accept=".epub,application/epub+zip" style="display:none">
-  <button class="tbtn" id="btnSave">💾 保存</button>
-  <button class="tbtn" id="btnBackup">📦 备份</button>
-  <button class="tbtn" id="btnExport">⬇️ 导出</button>
-  <button class="tbtn" id="btnNew">🆕 新建</button>
+  <button id="menuBtn" class="tbtn" title="章节面板">☰</button>
+  <span class="title">EPUB 分章工具 V5</span>
   <span class="spacer"></span>
-  <span class="tbtn" id="draftHint" style="background:transparent;font-size:11px;opacity:.85"></span>
+  <button class="tbtn" id="btnImport">📂 导入</button>
+  <button class="tbtn" id="btnSave">💾 保存</button>
+  <button class="tbtn" id="btnBackup">⬇️ 备份</button>
+  <button class="tbtn" id="btnExport">📤 导出</button>
+  <button class="tbtn" id="btnNew">🆕 新建</button>
+  <input type="file" id="fileInput" accept=".epub,.zip" style="display:none">
 </div>
 
-<div id="formbar">
-  <button title="撤销" id="fbUndo">↩ 撤销</button>
-  <button title="重做" id="fbRedo">↪ 重做</button>
-  <button title="加粗" id="fbBold"><b>B</b></button>
-  <button title="斜体" id="fbItalic"><i>I</i></button>
-  <button title="下划线" id="fbUnder"><u>U</u></button>
-  <button title="删除线" id="fbStrike"><s>S</s></button>
-  <button title="H2" id="fbH2">H2</button>
-  <button title="H3" id="fbH3">H3</button>
-  <button title="无序列表" id="fbUl">• 列表</button>
-  <button title="链接" id="fbLink">🔗</button>
-  <button title="清除格式" id="fbClear">清除格式</button>
+<div id="toolbar">
+  <button data-cmd="undo" title="撤销 (仅正文)">↩ 撤销</button>
+  <button data-cmd="redo" title="重做">↪ 重做</button>
+  <span class="sep"></span>
+  <button data-cmd="bold" title="加粗"><b>B</b></button>
+  <button data-cmd="italic" title="斜体"><i>I</i></button>
+  <button data-cmd="underline" title="下划线"><u>U</u></button>
+  <span class="sep"></span>
+  <button data-cmd="formatBlock" data-val="H2" title="H2">H2</button>
+  <button data-cmd="formatBlock" data-val="H3" title="H3">H3</button>
+  <button data-cmd="insertUnorderedList" title="列表">≡</button>
+  <button data-cmd="createLink" title="链接">🔗</button>
+  <button data-cmd="removeFormat" title="清除格式">⌫</button>
 </div>
 
-<div id="scrim"></div>
-<div id="sidebar">
-  <div id="closeSide"><button id="btnCloseSide" title="关闭面板">✕</button></div>
-  <div class="tabs">
-    <div class="tab active" data-tab="ch">章节</div>
-    <div class="tab" data-tab="toc">目录</div>
-    <div class="tab" data-tab="meta">元数据</div>
-  </div>
-  <div class="panel active" id="pCh">
-    <div class="sec-title">章节列表</div>
-    <div id="chList"></div>
-    <div class="stat" id="chStat"></div>
-    <button class="add-btn" id="btnAddCh">＋ 新增章节</button>
-    <div class="help">
-      • 导入后自动按 me/ta 轮次分章（封面/目录/前言＋第N章）<br>
-      • 新建章节含【我】【他】两个编辑区，导出自动包裹 me/ta 代码<br>
-      • 合并章节后自动重新排序、目录同步更新
+<div id="restoreBar">
+  <span>⚠️ 检测到未保存的草稿，是否恢复？</span>
+  <button id="btnRestore">恢复</button>
+  <button id="btnDiscard" class="rno">丢弃</button>
+</div>
+
+<div id="app">
+  <div id="scrim"></div>
+  <aside id="sidebar">
+    <div id="sideTabs">
+      <button class="tab active" data-tab="ch">章节</button>
+      <button class="tab" data-tab="toc">目录</button>
+      <button class="tab" data-tab="meta">元数据</button>
     </div>
-  </div>
-  <div class="panel" id="pToc">
-    <div class="sec-title">目录（可手动改名，改名后标记 ✎）</div>
-    <div id="tocList"></div>
-    <div class="help">合并/排序后目录自动重建；手动改过的标题以 " ✎" 标记。</div>
-  </div>
-  <div class="panel" id="pMeta">
-    <div class="sec-title">书籍元数据</div>
-    <div class="meta-row"><label>书名</label><input id="metaTitle" placeholder="留空则导出用「未命名」"></div>
-    <div class="meta-row"><label>作者</label><input id="metaAuthor" placeholder="作者"></div>
-    <div class="meta-row"><label>导出名</label><input id="metaExport" placeholder="导出文件名（不含.epub）"></div>
-  </div>
-</div>
+    <div class="side-body" id="tab-ch">
+      <div id="chList"></div>
+      <button class="add-chapter" id="btnAddCh">＋ 新建章节</button>
+      <div style="font-size:11px;color:var(--sub);margin-top:8px" id="chStat"></div>
+    </div>
+    <div class="side-body hidden" id="tab-toc">
+      <div id="tocList"></div>
+      <button class="add-chapter" id="btnAddToc">＋ 新增目录项</button>
+      <div style="font-size:11px;color:var(--sub);margin-top:6px">目录项可绑定章节；标题手动修改后不再自动跟随。</div>
+    </div>
+    <div class="side-body hidden" id="tab-meta">
+      <div class="meta-field"><label>书名</label><input id="metaTitle" placeholder="未命名"></div>
+      <div class="meta-field"><label>作者</label><input id="metaAuthor" placeholder="未知"></div>
+      <div style="font-size:11px;color:var(--sub)">元数据仅影响导出 EPUB 的 OPF/标题。</div>
+    </div>
+  </aside>
 
-<div id="content">
-  <div class="stat" id="curChInfo">尚未导入文件</div>
-  <div id="editor" class="editor" contenteditable="true" spellcheck="false"></div>
+  <main id="editorWrap">
+    <div id="editorHead">
+      <input id="edTitle" placeholder="章节标题">
+      <div id="edInfo">第 1 段 · 0 字</div>
+    </div>
+    <div id="editor" contenteditable="true" spellcheck="false"></div>
+  </main>
 </div>
 
 <div id="toast"></div>
+<div id="loading"><div class="sp"></div><div id="loadingText">处理中…</div></div>
 
 <script>
+/* ============ 启动自检 ============ */
+if(typeof JSZip !== 'function'){
+  console.error('JSZip 库未加载：请确认 jszip.min.js 与本文件在同一目录');
+  toast('JSZip 库加载失败，导入/导出将不可用');
+}
 /* ============ 工具函数 ============ */
-const $=(s)=>document.querySelector(s);
-const $$=(s)=>document.querySelectorAll(s);
-function toast(msg,ms=2400){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._h);toast._h=setTimeout(()=>t.classList.remove('show'),ms)}
-function safeName(s){return (s||'').replace(/[\/\\:*?"<>|]+/g,'_').replace(/\s+/g,'_').slice(0,80)||'未命名'}
-function fmtCount(n){n=+n||0;if(n>=10000)return (n/10000).toFixed(1).replace(/\.0$/,'')+'万字';return n+'字'}
-function el(tag,cls,html){const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e}
-function isMeTa(node){if(!node||node.nodeType!==1)return false;const cls=(' '+(node.className||'')+' ').replace(/\s+/g,' ');return cls.includes(' me ')||cls.includes(' ta ')}
-function nodeTextLen(n){return (n.textContent||'').trim().length}
-
-/* ============ 全局状态 ============ */
-const DRAFT_KEY='epubToolV5_draft';
-const META_KEY='epubToolV5_meta';
-const HIST_MAX=30;
-const state={
-  chapters:[],   // {id,title,html,manual,order}
-  toc:[],        // {id,label,chapterId,manual}
-  meta:{title:'',author:'',exportName:''},
-  curId:null,
-  hist:{stack:[],idx:-1,timer:null},
-  _importing:false // 导入分章过程中禁止保存草稿
+const $ = (s)=>document.querySelector(s);
+const $$ = (s)=>document.querySelectorAll(s);
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),2200);}
+function showLoading(msg){$('#loadingText').textContent=msg||'处理中…';$('#loading').classList.add('show');}
+function hideLoading(){$('#loading').classList.remove('show');}
+function fmtCount(n){if(n<10000) return n+'字'; return (n/10000).toFixed(1)+'万字';}
+function safeName(s){return (s||'未命名').replace(/[\\/:*?"<>|]/g,'_').replace(/\s+/g,' ').trim()||'未命名';}
+function uid(){return 'c'+Math.random().toString(36).slice(2,8);}
+/* ============ 状态 ============ */
+const state = {
+  chapters:[],   // {id,title,html,ordinal,xhtmlSource?}
+  toc:[],        // {id,title,chapterId,manual}
+  meta:{title:'未命名',author:''},
+  activeId:null,
+  hist:{cur:0,stack:[]}, // 每章独立，按 activeId 切换
+  hists:{},      // chapterId -> {cur,stack}
+  dirty:false,
 };
-
-/* ============ 启动 ============ */
-window.addEventListener('DOMContentLoaded',()=>{
-  if(typeof JSZip!=='function'){toast('JSZip 库加载失败，导入/导出将不可用',6000);console.error('JSZip not defined');}
-  loadMeta();
-  bindDrawer();
-  bindTabs();
-  bindTopbar();
-  bindFormbar();
-  bindEditor();
-  tryRestoreDraft();
-});
-
-/* ============ 抽屉式侧栏（三道杠触发） ============ */
-function bindDrawer(){
-  const side=$('#sidebar'),scrim=$('#scrim');
-  const open=()=>{side.classList.add('open');scrim.classList.add('show')};
-  const close=()=>{side.classList.remove('open');scrim.classList.remove('show')};
-  $('#burger').onclick=open;
-  $('#btnCloseSide').onclick=close;
-  scrim.onclick=close;
+const HIST_MAX = 30;
+const RESTORE_KEY = 'epubEditorDraftV5';
+/* ============ 历史（撤销/重做，仅正文，防抖） ============ */
+function getHist(id){return state.hists[id] || (state.hists[id]={cur:0,stack:[]});}
+function pushHistory(html){
+  const id = state.activeId; if(!id) return;
+  const h = getHist(id);
+  if(h.stack[h.cur]===html){return;}
+  h.stack = h.stack.slice(0, h.cur+1);
+  h.stack.push(html);
+  if(h.stack.length>HIST_MAX) h.stack.shift();
+  h.cur = h.stack.length-1;
 }
-
-/* ============ 标签页 ============ */
-function bindTabs(){
-  $$('.tab').forEach(t=>t.onclick=()=>{
-    $$('.tab').forEach(x=>x.classList.remove('active'));
-    $$('.panel').forEach(x=>x.classList.remove('active'));
-    t.classList.add('active');
-    $('#p'+t.dataset.tab.replace(/^./,c=>c.toUpperCase())).classList.add('active');
-    if(t.dataset.tab==='toc')renderToc();
-  });
-}
-
-/* ============ 顶部栏 ============ */
-function bindTopbar(){
-  $('#btnImport').onclick=()=>$('#fileInput').click();
-  $('#fileInput').onchange=e=>{const f=e.target.files[0];if(f)importEpub(f);e.target.value=''};
-  $('#btnSave').onclick=()=>{saveDraft(true);toast('已保存草稿')};
-  $('#btnBackup').onclick=()=>{saveDraft(true);const b=JSON.stringify({chapters:state.chapters,toc:state.toc,meta:state.meta},null,0);const u=URL.createObjectURL(new Blob([b],{type:'application/json'}));const a=document.createElement('a');a.href=u;a.download=safeName(state.meta.title||'草稿')+'_backup.json';a.click();URL.revokeObjectURL(u);toast('已备份草稿')};
-  $('#btnExport').onclick=()=>exportEpub();
-  $('#btnNew').onclick=()=>addNewChapter();
-  $('#btnAddCh').onclick=()=>addNewChapter();
-  $('#metaTitle').oninput=e=>{state.meta.title=e.target.value;saveMeta();};
-  $('#metaAuthor').oninput=e=>{state.meta.author=e.target.value;saveMeta();};
-  $('#metaExport').oninput=e=>{state.meta.exportName=e.target.value;saveMeta();};
-}
-
-/* ============ 富文本工具栏 ============ */
-function bindFormbar(){
-  const cmd=(n,p=null)=>()=>{document.execCommand(n,false,p);$('#editor').focus();pushHistory(true)};
-  $('#fbUndo').onclick=()=>undo();
-  $('#fbRedo').onclick=()=>redo();
-  $('#fbBold').onclick=cmd('bold');$('#fbItalic').onclick=cmd('italic');$('#fbUnder').onclick=cmd('underline');$('#fbStrike').onclick=cmd('strikeThrough');
-  $('#fbH2').onclick=cmd('formatBlock','H2');$('#fbH3').onclick=cmd('formatBlock','H3');
-  $('#fbUl').onclick=cmd('insertUnorderedList');
-  $('#fbLink').onclick=()=>{const u=prompt('链接地址');if(u)cmd('createLink',u)()};
-  $('#fbClear').onclick=cmd('removeFormat');
-}
-
-/* ============ 编辑器 ============ */
-function bindEditor(){
+let histTimer=null;
+function onEdit(){
+  state.dirty=true;
   const ed=$('#editor');
-  ed.addEventListener('input',()=>{
-    const c=currentCh();if(!c)return;
-    c.html=ed.innerHTML;
-    if(state.hist.timer)clearTimeout(state.hist.timer);
-    state.hist.timer=setTimeout(()=>pushHistory(false),500);
-    scheduleDraftSave();
-    renderChList();
-  });
+  if(histTimer) clearTimeout(histTimer);
+  histTimer=setTimeout(()=>{ pushHistory(ed.innerHTML); scheduleDraftSave(); }, 500);
 }
-
-/* ============ 历史（撤销/重做，仅正文） ============ */
-function pushHistory(force){
-  const c=currentCh();if(!c)return;
-  if(state.hist.timer){clearTimeout(state.hist.timer);state.hist.timer=null}
-  const snap=c.html;
-  const h=state.hist;
-  if(h.idx>=0 && h.stack[h.idx]===snap && !force)return;
-  h.stack=force? h.stack.slice(0,h.idx+1) : h.stack;
-  h.stack.push(snap);
-  if(h.stack.length>HIST_MAX)h.stack.shift();
-  h.idx=h.stack.length-1;
+function doUndo(){
+  const id=state.activeId; if(!id) return;
+  const h=getHist(id); if(h.cur<=0){toast('已是第一步');return;}
+  h.cur--; $('#editor').innerHTML=h.stack[h.cur]; scheduleDraftSave();
 }
-function undo(){const h=state.hist;if(h.idx>0){h.idx--;applySnap(h.stack[h.idx])}}
-function redo(){const h=state.hist;if(h.idx<h.stack.length-1){h.idx++;applySnap(h.stack[h.idx])}}
-function applySnap(html){const c=currentCh();if(!c)return;c.html=html;$('#editor').innerHTML=html;pushHistory(false)}
-
+function doRedo(){
+  const id=state.activeId; if(!id) return;
+  const h=getHist(id); if(h.cur>=h.stack.length-1){toast('已是最后一步');return;}
+  h.cur++; $('#editor').innerHTML=h.stack[h.cur]; scheduleDraftSave();
+}
 /* ============ 章节渲染 ============ */
-function renderChList(){
-  const box=$('#chList');box.innerHTML='';
-  state.chapters.forEach((c)=>{
-    const div=el('div','ch-item'+(c.id===state.curId?' active':''));
-    const titleSpan=el('span','ch-title');titleSpan.textContent=c.title+(c.manual?' ✎':'');
-    const cnt=el('span','cnt');cnt.textContent=fmtCount(chPlainLen(c));
-    const mg=el('button','merge');mg.textContent='合并↑';mg.title='合并到上一章';mg.onclick=ev=>{ev.stopPropagation();mergeUp(c.id)};
-    const dl=el('button','del');dl.textContent='×';dl.title='删除章节';dl.onclick=ev=>{ev.stopPropagation();deleteChapter(c.id)};
-    div.append(titleSpan,cnt,mg,dl);
-    div.onclick=()=>selectChapter(c.id);
-    box.append(div);
+function renderChapters(){
+  const box=$('#chList'); box.innerHTML='';
+  state.chapters.forEach((c,idx)=>{
+    const div=document.createElement('div');
+    div.className='ch-item'+(c.id===state.activeId?' active':'');
+    const cnt=countText(c.html);
+    div.innerHTML=`<span class="ch-name">${esc(c.title)}</span><span class="ch-count">${fmtCount(cnt)}</span>`;
+    const merge=document.createElement('button'); merge.className='ch-merge'; merge.textContent='合并↑'; merge.title='合并到上一章';
+    merge.onclick=(e)=>{e.stopPropagation(); mergeWithPrev(c.id);};
+    const del=document.createElement('button'); del.className='ch-del'; del.textContent='×'; del.title='删除章节';
+    del.onclick=(e)=>{e.stopPropagation(); deleteChapter(c.id);};
+    div.appendChild(merge); div.appendChild(del);
+    div.onclick=()=>{ switchChapter(c.id); closeSidebar(); };
+    box.appendChild(div);
   });
-  const tot=state.chapters.reduce((s,c)=>s+chPlainLen(c),0);
-  $('#chStat').textContent=`共 ${state.chapters.length} 章 · 总 ${fmtCount(tot)}`;
+  const total=state.chapters.reduce((a,c)=>a+countText(c.html),0);
+  $('#chStat').textContent=`共 ${state.chapters.length} 章 · 合计 ${fmtCount(total)}`;
 }
-// 统计/导出时把可视化容器标签还原为标准 me/ta 再计纯文本长度
-function chPlainLen(c){return nodeTextLen({textContent:stripContainerLabels(c.html)})}
-function stripContainerLabels(html){return (html||'').replace(/<div class="me-box">[\s\S]*?<div class="me-edit">/g,'<div class="me">').replace(/<div class="ta-box">[\s\S]*?<div class="ta-edit">/g,'<div class="ta">')}
-
-function currentCh(){return state.chapters.find(c=>c.id===state.curId)}
-function selectChapter(id){
-  const ed=$('#editor');const cur=currentCh();if(cur)cur.html=ed.innerHTML;
-  state.curId=id;renderChList();
-  const c=currentCh();if(!c){ed.innerHTML='';$('#curChInfo').textContent='尚未导入文件';return}
-  ed.innerHTML=c.html||'';
-  pushHistory(true);
-  $('#curChInfo').textContent=`当前：${c.title}（${fmtCount(chPlainLen(c))}）`;
-  // 切章自动回顶（正文从固定工具栏下方开始）
-  try{ed.scrollTo({top:0,behavior:'instant' in ed?'instant':'auto'});}catch(e){}
-  window.scrollTo(0,0);
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function countText(html){const t=html.replace(/<style[\s\S]*?<\/style>/gi,'').replace(/<[^>]+>/g,'');return t.replace(/\s/g,'').length;}
+/* ============ 章节切换 ============ */
+function switchChapter(id){
+  if(state.activeId===id) { window.scrollTo(0,0); $('#editor').scrollTop=0; return; }
+  state.activeId=id;
+  const c=state.chapters.find(x=>x.id===id); if(!c) return;
+  $('#edTitle').value=c.title;
+  $('#editor').innerHTML=c.html||'';
+  const h=getHist(id); state.hist=h; state.hist.cur=h.cur; state.hist.stack=h.stack;
+  const cnt=countText(c.html);
+  $('#edInfo').textContent=`第 ${state.chapters.findIndex(x=>x.id===id)+1} 章 · ${fmtCount(cnt)}`;
+  renderChapters(); renderToc();
+  window.scrollTo({top:0,behavior:'instant'}); $('#editor').scrollTop=0;
 }
-
-/* ============ 新增章节（可视化 me/ta 容器，标准 xhtml 骨架） ============ */
+/* ============ 新建章节（强制 me 标签包裹，保证二次导入不被误归前言） ============ */
+function newChapter(titleHint){
+  const ord = nextOrdinal();
+  const title = titleHint || (`第 ${ord} 章`);
+  const html = `<div class="me"><p class="who">我</p><p><br></p></div>`;
+  const c={id:uid(), title, html, ordinal:ord};
+  state.chapters.push(c);
+  // 目录：自动追加（未手动）
+  state.toc.push({id:uid(), title, chapterId:c.id, manual:false});
+  switchChapter(c.id); state.dirty=true; scheduleDraftSave(); toast('已新建章节：'+title);
+}
 function nextOrdinal(){
-  let max=0;state.chapters.forEach(c=>{const m=c.title.match(/第\s*(\d+)\s*章/);if(m)max=Math.max(max,+m[1])});
+  let max=0; state.chapters.forEach(c=>{ if(c.ordinal&&!isNaN(c.ordinal)) max=Math.max(max,c.ordinal); });
   return max+1;
 }
-function newChapterHtml(){
-  return `<div class="me-box"><div class="lbl">【我】的发言</div><div class="me-edit" contenteditable="true"></div></div><div class="ta-box"><div class="lbl">【他】的发言</div><div class="ta-edit" contenteditable="true"></div></div>`;
-}
-function addNewChapter(){
-  const ord=nextOrdinal();
-  const title=`第 ${ord} 章`;
-  const ch={id:'ch_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),title,html:newChapterHtml(),manual:false,order:state.chapters.length+1};
-  state.chapters.push(ch);
-  state.toc.push({id:'toc_'+ch.id,label:title,chapterId:ch.id,manual:false});
-  selectChapter(ch.id);reorderAll(false);saveDraft(true);toast('已新增：'+title);
-}
-
-/* ============ 合并 / 删除 ============ */
-function mergeUp(id){
-  const idx=state.chapters.findIndex(c=>c.id===id);if(idx<=0)return toast('已是第一章，无法合并');
-  const target=state.chapters[idx-1];const src=state.chapters[idx];
-  target.html=(target.html||'')+(src.html||'');
+/* ============ 合并章节 ============ */
+function mergeWithPrev(id){
+  const idx=state.chapters.findIndex(x=>x.id===id); if(idx<=0){toast('已是第一章，无法合并');return;}
+  const cur=state.chapters[idx], prev=state.chapters[idx-1];
+  // 内容拼接
+  prev.html = (prev.html||'') + (cur.html||'');
+  // 标题取上一章
+  // 目录：删除当前章绑定项，重排编号
+  state.toc = state.toc.filter(t=>t.chapterId!==cur.id);
   state.chapters.splice(idx,1);
-  state.toc=state.toc.filter(t=>t.chapterId!==src.id);
-  reorderAll(false);selectChapter(target.id);saveDraft(true);toast('已合并到：'+target.title);
+  renumberChapters(); renumberToc();
+  switchChapter(prev.id); state.dirty=true; scheduleDraftSave(); toast('已合并到：'+prev.title);
 }
-function deleteChapter(id){
-  if(state.chapters.length<=1)return toast('至少保留一章');
-  if(!confirm('确定删除该章节？'))return;
-  const idx=state.chapters.findIndex(c=>c.id===id);
-  state.chapters.splice(idx,1);
-  state.toc=state.toc.filter(t=>t.chapterId!==id);
-  reorderAll(false);
-  if(state.curId===id)selectChapter(state.chapters[Math.min(idx,state.chapters.length-1)].id);else renderChList();
-  saveDraft(true);
-}
-
-/* ============ 重新排序（强制：正文按序号重命名 + 目录重建 + 自动触发） ============ */
-function reorderAll(showToast=true){
-  const special=(t)=>/^(封面|目录|前言)$/.test(t);
-  const sp=state.chapters.filter(c=>special(c.title));
-  const body=state.chapters.filter(c=>!special(c.title));
-  body.forEach((c,i)=>{c.title=`第 ${i+1} 章`;c.manual=false;c.order=i+1});
-  state.chapters=[...sp,...body];
-  state.toc=state.chapters.map(c=>({id:'toc_'+c.id,label:c.title,chapterId:c.id,manual:false}));
-  renderChList();renderToc();
-  const cur=currentCh();if(cur)$('#curChInfo').textContent=`当前：${cur.title}`;
-  if(showToast)toast('已重新排序，目录已更新');
-}
-
-/* ============ 目录面板 ============ */
-function renderToc(){
-  const box=$('#tocList');box.innerHTML='';
-  state.toc.forEach((t,idx)=>{
-    const row=el('div','toc-item');
-    row.innerHTML=`<input value="${t.label.replace(/"/g,'&quot;')}"><span class="tdel" title="删除">🗑</span>`;
-    const inp=row.querySelector('input');inp.oninput=()=>{t.label=inp.value;t.manual=true;renderChList()};
-    row.querySelector('.tdel').onclick=()=>{state.toc.splice(idx,1);renderToc();renderChList()};
-    box.append(row);
+function renumberChapters(){
+  state.chapters.forEach((c,i)=>{
+    if(/^第\s*\d+\s*章$/.test(c.title)) c.title=`第 ${i+1} 章`;
   });
 }
-
-/* ============ 导入 EPUB ============ */
+function renumberToc(){
+  state.toc.forEach((t,idx)=>{
+    if(!t.manual){ const c=state.chapters.find(x=>x.id===t.chapterId); if(c) t.title=c.title; }
+  });
+}
+/* ============ 删除章节 ============ */
+function deleteChapter(id){
+  if(state.chapters.length<=1){toast('至少保留一章');return;}
+  if(!confirm('确定删除该章节？')) return;
+  const idx=state.chapters.findIndex(x=>x.id===id);
+  state.chapters.splice(idx,1);
+  state.toc=state.toc.filter(t=>t.chapterId!==id);
+  renumberChapters(); renumberToc();
+  if(state.activeId===id) switchChapter(state.chapters[Math.min(idx,state.chapters.length-1)].id);
+  else renderChapters();
+  state.dirty=true; scheduleDraftSave();
+}
+/* ============ 目录渲染/同步 ============ */
+function renderToc(){
+  const box=$('#tocList'); box.innerHTML='';
+  state.toc.forEach(t=>{
+    const div=document.createElement('div'); div.className='toc-item';
+    const inp=document.createElement('input'); inp.value=t.title;
+    inp.oninput=()=>{ t.title=inp.value; t.manual=true; };
+    const sel=document.createElement('select'); sel.title='绑定章节';
+    const opt0=document.createElement('option'); opt0.value=''; opt0.textContent='— 无 —';
+    sel.appendChild(opt0);
+    state.chapters.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.title; if(t.chapterId===c.id) o.selected=true; sel.appendChild(o); });
+    sel.onchange=()=>{ t.chapterId=sel.value||null; };
+    const del=document.createElement('button'); del.className='tdel'; del.textContent='×'; del.onclick=()=>{ state.toc=state.toc.filter(x=>x.id!==t.id); renderToc(); };
+    div.appendChild(inp); div.appendChild(sel); div.appendChild(del); box.appendChild(div);
+  });
+}
+function syncTocFromChapters(){
+  // 确保每个章节都有对应目录项（未手动改名跟随章节名）
+  state.chapters.forEach(c=>{
+    let t=state.toc.find(x=>x.chapterId===c.id);
+    if(!t){ state.toc.push({id:uid(),title:c.title,chapterId:c.id,manual:false}); }
+    else if(!t.manual) t.title=c.title;
+  });
+  state.toc=state.toc.filter(t=>!t.chapterId || state.chapters.some(c=>c.id===t.chapterId));
+}
+/* ============ 导入 EPUB（自动分章：nav/cover 特殊 + 前言 + 按 me/ta 轮次） ============ */
 async function importEpub(file){
-  if(typeof JSZip!=='function')return toast('JSZip 未加载，无法导入',4000);
-  state._importing=true;
-  toast('正在解析 EPUB…',1500);
+  if(typeof JSZip!=='function'){toast('JSZip 未加载，无法导入');return;}
+  showLoading('正在解析 EPUB…');
   try{
     const buf=await file.arrayBuffer();
     const zip=await JSZip.loadAsync(buf);
-    let opfPath=null;const container=zip.file('META-INF/container.xml');if(container){const xml=await container.async('string');const m=xml.match(/full-path="([^"]+)"/);if(m)opfPath=m[1]}
-    let opf=null;if(opfPath){const f=zip.file(opfPath);if(f)opf=await f.async('string')}
-    const files=Object.values(zip.files).filter(f=>!f.dir && /\.xhtml?$/i.test(f.name) && !/\/(nav|cover)\.xhtml?$/i.test('/'+f.name));
-    const allHtml=[];for(const f of files){const txt=await f.async('string');allHtml.push(txt)}
-    const joined=allHtml.join('\n');
-    const chapters=smartSplit(joined);
-    const specials=[];
-    const navF=zip.file(/\/(nav\.xhtml?)$/i);if(navF&&navF.length){specials.push({id:'ch_nav',title:'目录',html:await navF[0].async('string'),manual:false,order:0})}
-    const coverF=zip.file(/\/(cover\.xhtml?)$/i);if(coverF&&coverF.length){specials.push({id:'ch_cover',title:'封面',html:await coverF[0].async('string'),manual:false,order:0})}
-    state.chapters=[...specials,...chapters];
-    state.toc=state.chapters.map(c=>({id:'toc_'+c.id,label:c.title,chapterId:c.id,manual:false}));
-    state.curId=state.chapters[0]?state.chapters[0].id:null;
-    renderChList();selectChapter(state.curId);saveDraft(true);
-    toast(`导入成功：共 ${state.chapters.length} 章`,3000);
-  }catch(e){console.error(e);toast('导入失败：'+(e.message||e),5000)}
-  finally{state._importing=false}
+    // 收集 xhtml/html 文件（排除 OPF/NCX/nav 由解析处理）
+    const files=[];
+    zip.forEach((path,entry)=>{
+      if(entry.dir) return;
+      const p=path.toLowerCase();
+      if(p.endsWith('.xhtml')||p.endsWith('.html')||p.endsWith('.htm')){
+        if(p.endsWith('nav.xhtml')||p.endsWith('toc.ncx')) return; // 单独处理
+        files.push({path,entry});
+      }
+    });
+    // 分别提取 nav / cover
+    let navHtml='', coverHtml='';
+    zip.forEach((path,entry)=>{ if(!entry.dir&&path.toLowerCase().endsWith('nav.xhtml')) navHtml='nav'; });
+    // 排序文件以保证顺序
+    files.sort((a,b)=>a.path.localeCompare(b.path));
+    const chapters=[];
+    let navDone=false,coverDone=false;
+    for(const f of files){
+      let txt=await f.entry.async('string');
+      const p=f.path.toLowerCase();
+      if(!navDone && /nav\.xhtml$/.test(p)){ navDone=true; chapters.push(makeSpecialChapter('目录','nav',txt)); continue; }
+      if(!coverDone && /cover\.xhtml$/.test(p)){ coverDone=true; chapters.push(makeSpecialChapter('封面','cover',txt)); continue; }
+      // 正文分章
+      const {preamble, rounds}=splitByRounds(txt);
+      if(preamble!=null && preamble.trim()) chapters.push({id:uid(),title:'前言',html:cleanToHtml(preamble),ordinal:0,kind:'preamble'});
+      rounds.forEach((r,ri)=>{
+        const ord=chapters.filter(c=>c.kind!=='special'&&c.kind!=='preamble').length+1;
+        chapters.push({id:uid(),title:`第 ${ord} 章`,html:roundToHtml(r),ordinal:ord,kind:'round'});
+      });
+    }
+    // 重排 ordinal：前言=0，正文 1..N
+    let n=0; chapters.forEach(c=>{ if(c.kind==='round') c.ordinal=++n; });
+    state.chapters=chapters;
+    state.toc=chapters.filter(c=>c.kind!=='special').map(c=>({id:uid(),title:c.title,chapterId:c.id,manual:false}));
+    state.activeId=null; state.hists={};
+    syncTocFromChapters();
+    if(state.chapters.length){ switchChapter(state.chapters[0].id); }
+    renderChapters(); renderToc();
+    state.dirty=true; scheduleDraftSave();
+    hideLoading(); toast(`导入成功：共 ${chapters.length} 章（含目录/封面）`);
+  }catch(e){
+    hideLoading(); console.error(e); toast('导入失败：'+(e.message||'文件格式不标准'));
+  }
 }
-
-/* ============ 智能分章核心 ============ */
-function smartSplit(fullHtml){
-  const wrap=document.createElement('div');wrap.innerHTML=fullHtml;
-  const nodes=Array.from(wrap.children);
-  const chapters=[];
-  // 1) 定位第一个 me/ta 元素
-  let firstIdx=-1;nodes.forEach((n,i)=>{if(firstIdx===-1 && isMeTa(n))firstIdx=i});
-  const preNodes=firstIdx===-1? nodes : nodes.slice(0,firstIdx);
-  let preface=preNodes.map(n=>n.outerHTML).join('');
-  // 边界修正（仅前言→第一章）：前言末尾若为 h1 或 p.meta 块，移至第一章开头
-  const preWrap=document.createElement('div');preWrap.innerHTML=preface;
-  const preChildren=Array.from(preWrap.children);
-  const moved=[];if(preChildren.length){const last=preChildren[preChildren.length-1];if((last.tagName==='H1')||(last.tagName==='P'&&(last.className||'').includes('meta'))){moved.unshift(preChildren.pop())}}
-  preface=preChildren.map(n=>n.outerHTML).join('');
-  if(preface.trim())chapters.push({id:'ch_'+Date.now()+'_pre',title:'前言',html:preface,manual:false,order:1});
-  // 2) 正文：按回合切分（每个 me 块开启新回合；ta/其他归入当前回合）
-  const bodyNodes=firstIdx===-1? [] : nodes.slice(firstIdx);
-  let curRound=[],rounds=[];
-  bodyNodes.forEach(n=>{if(isMeTa(n)){if(curRound.length){rounds.push(curRound);curRound=[]}curRound.push(n.outerHTML)}else{curRound.push(n.outerHTML)}});
-  if(curRound.length)rounds.push(curRound);
-  if(moved.length){const first=rounds[0]||[];rounds[0]=[...moved.map(x=>x.outerHTML),...first]}
-  if(!rounds.length && !chapters.length){chapters.push({id:'ch_'+Date.now()+'_pre',title:'前言',html:preface||moved.map(x=>x.outerHTML).join(''),manual:false,order:1})}
-  rounds.forEach((r,i)=>{chapters.push({id:'ch_'+Date.now()+'_'+i,title:`第 ${i+1} 章`,html:r.join(''),manual:false,order:chapters.length+1})});
-  return chapters;
+function makeSpecialChapter(title,kind,srcHtml){return {id:uid(),title,html:cleanToHtml(srcHtml),ordinal:-1,kind:'special',special:kind};}
+/* ---- 核心：按轮次切分（前言 + me/ta 回合） ---- */
+function splitByRounds(fullHtml){
+  // 返回 {preamble:string, rounds:string[]}
+  // 1) 找首个 me/ta 块的位置
+  const meRe=/<div[^>]+class="me"[^>]*>/i, taRe=/<div[^>]+class="ta"[^>]*>/i;
+  const m1=(fullHtml.match(meRe)||[])[0], t1=(fullHtml.match(taRe)||[])[0];
+  let firstIdx=-1, firstIsMe=false;
+  if(m1!=null && t1!=null){ firstIdx=Math.min(fullHtml.indexOf(m1),fullHtml.indexOf(t1)); firstIsMe=fullHtml.indexOf(m1)<fullHtml.indexOf(t1); }
+  else if(m1!=null){ firstIdx=fullHtml.indexOf(m1); firstIsMe=true; }
+  else if(t1!=null){ firstIdx=fullHtml.indexOf(t1); firstIsMe=false; }
+  let preamble='', body=fullHtml;
+  if(firstIdx>0){ preamble=fullHtml.slice(0,firstIdx); body=fullHtml.slice(firstIdx); }
+  else if(firstIdx===0){ preamble=''; body=fullHtml; }
+  // 升级规则：若 preamble 含 <h1>（时间戳标题，如【时间】...），说明该 h1 及之后到首个 me/ta 前的内容
+  // 本属"第一章开头"，将其从 preamble(前言)移出，unshift 到 rounds 作为首个回合的一部分。
+  if(/<\/?h1>/.test(preamble)){
+    const idx=preamble.lastIndexOf('<h1'); if(idx>0){ const move=preamble.slice(idx); preamble=preamble.slice(0,idx); rounds.unshift(move); }
+    else if(idx===0){ const move=preamble; preamble=''; rounds.unshift(move); }
+  }
+  // 2) 从 body 中提取 me/ta 块序列
+  const blockRe=/<div[^>]+class="(me|ta)"[^>]*>[\s\S]*?<\/div>/gi;
+  const blocks=[];
+  let mm; while((mm=blockRe.exec(body))){ blocks.push(mm[0]); }
+  // 3) 聚合：连续 me/ta 视为一个回合（直到遇到非 me/ta 大段；此处简化为每块即一轮次内容聚合）
+  // 策略：每出现一个新的 me 块开启新回合（若首块是 ta 也开启）；连续同类型并入当前回合
+  const rounds=[];
+  let cur='';
+  blocks.forEach((b)=>{
+    const isMe=/class="me"/i.test(b);
+    if(!cur){ cur=b; }
+    else{
+      // 新回合起点：遇到 me 块（用户回复开始新一轮）
+      if(isMe){ rounds.push(cur); cur=b; }
+      else cur+=b;
+    }
+  });
+  if(cur) rounds.push(cur);
+  return {preamble, rounds};
 }
-
+function roundToHtml(r){ return r; }
+/* ---- 清洗：去掉 xml 声明/doctype/head，仅保留 body 内部用于编辑 ---- */
+function cleanToHtml(src){
+  let s=src||'';
+  s=s.replace(/<\?xml[^?]*\?>/i,'').replace(/<!DOCTYPE[^>]*>/i,'');
+  // 取 body 内部
+  const bm=s.match(/<body[^>]*>([\s\S]*)<\/body>/i); if(bm) s=bm[1];
+  return s.trim();
+}
 /* ============ 导出 EPUB ============ */
 async function exportEpub(){
-  if(typeof JSZip!=='function')return toast('JSZip 未加载，无法导出',4000);
-  const zip=new JSZip();
-  zip.file('mimetype','application/epub+zip');
-  const metaInf=zip.folder('META-INF');metaInf.file('container.xml','<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>');
-  const css=`body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.8;padding:24px;color:#222}.me{color:#1b5e20}.ta{color:#1a3a8a}.meta{color:#888;font-size:.9em}`;zip.file('style.css',css);
-  const pad2=n=>String(n).padStart(2,'0');
-  // 导出前把可视化容器转回标准 me/ta div（保证通用 EPUB 阅读器可读）
-  const chapters=state.chapters.map((c,i)=>{const fn=`ch${pad2(i+1)}.xhtml`;return {c,fn}});
-  const navHtml='<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><meta charset="utf-8"/><title>目录</title></head><body><nav epub:type="toc"><h1>目录</h1><ol>'+
-    chapters.map(({c,fn})=>`<li><a href="${fn}">${c.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</a></li>`).join('')+
-    '</ol></nav></body></html>';
-  zip.file('nav.xhtml',navHtml);
-  const manifestItems=chapters.map(({c,fn})=>`<item id="id_${fn.replace('.xhtml','')}" href="${fn}" media-type="application/xhtml+xml"/>`).join('')+
-    `<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`+
-    `<item id="css" href="style.css" media-type="text/css"/>`;
-  const spineItems=chapters.map(({c,fn})=>`<itemref idref="id_${fn.replace('.xhtml','')}"/>`).join('');
-  const titleAttr=(state.meta.title||'未命名').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  const opf=`<?xml version="1.0"?><package version="3.0" xmlns="http://www.idpf.org/2007/opf" unique-identifier="bookid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>${titleAttr}</dc:title><dc:creator>${state.meta.author||''}</dc:creator><dc:identifier id="bookid">urn:uuid:${Date.now()}</dc:identifier><dc:language>zh-CN</dc:language></metadata><manifest>${manifestItems}</manifest><spine>${spineItems}</spine></package>`;
-  zip.file('content.opf',opf);
-  chapters.forEach(({c,fn})=>{
-    const body=stripContainerLabels(c.html)||'';
-    const xhtml=`<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><meta charset="utf-8"/><title>${c.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</title><link rel="stylesheet" type="text/css" href="style.css"/></head><body>${body}</body></html>`;
-    zip.file(fn,xhtml);
-  });
-  const blob=await zip.generateAsync({type:'blob',mimeType:'application/epub+zip',compression:'STORE'});
-  const name=safeName(state.meta.exportName||state.meta.title||'未命名')+'.epub';
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href);
-  toast('已导出：'+name,3000);
-}
-
-/* ============ 元数据 ============ */
-function loadMeta(){try{const m=JSON.parse(localStorage.getItem(META_KEY)||'null');if(m)state.meta={...state.meta,...m};$('#metaTitle').value=state.meta.title||'';$('#metaAuthor').value=state.meta.author||'';$('#metaExport').value=state.meta.exportName||''}catch(e){}}
-function saveMeta(){localStorage.setItem(META_KEY,JSON.stringify(state.meta))}
-
-/* ============ 草稿（导入分章过程不保存；仅用户操作时保存） ============ */
-let draftTimer=null;
-function scheduleDraftSave(){if(draftTimer)clearTimeout(draftTimer);draftTimer=setTimeout(()=>saveDraft(false),900)}
-function saveDraft(force){
-  if(state._importing)return; // 分章中途绝不写半成品
-  try{localStorage.setItem(DRAFT_KEY,JSON.stringify({chapters:state.chapters,toc:state.toc,meta:state.meta,curId:state.curId,ts:Date.now()}));$('#draftHint').textContent='已自动存草稿'}catch(e){}
-}
-function tryRestoreDraft(){
+  if(typeof JSZip!=='function'){toast('JSZip 未加载，无法导出');return;}
+  const name=prompt('导出文件名（不含扩展名）', safeName(state.meta.title)||'未命名');
+  if(name===null) return;
+  const fname=safeName(name)+'.epub';
+  showLoading('正在打包 EPUB…');
   try{
-    const raw=localStorage.getItem(DRAFT_KEY);if(!raw)return;
-    const d=JSON.parse(raw);if(!d||!Array.isArray(d.chapters)||!d.chapters.length)return;
-    state.chapters=d.chapters;state.toc=Array.isArray(d.toc)? d.toc : state.chapters.map(c=>({id:'toc_'+c.id,label:c.title,chapterId:c.id,manual:false}));state.meta=d.meta||state.meta;loadMeta();
-    state.curId=d.curId&&state.chapters.find(c=>c.id===d.curId)? d.curId : state.chapters[0].id;
-    renderChList();selectChapter(state.curId);$('#draftHint').textContent='已恢复草稿';toast('已恢复上次草稿',2000);
-  }catch(e){console.error('draft restore failed',e)}
+    const zip=new JSZip();
+    // mimetype 首条目 + STORE（未压缩）
+    zip.file('mimetype','application/epub+zip',{compression:'STORE'});
+    zip.folder('META-INF').file('container.xml','<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>');
+    const oebps=zip.folder('OEBPS');
+    const css=`body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.8;padding:16px;color:#222}.me{background:#f0f7ff;border-left:3px solid #4a90e2;padding:8px 10px;margin:8px 0;border-radius:8px}.ta{background:#fff6ee;border-left:3px solid #e2a04a;padding:8px 10px;margin:8px 0;border-radius:8px}.who{font-weight:700;color:#666;font-size:.9em;display:block;margin-bottom:2px}.meta{color:#888;font-size:.85em}`;
+    oebps.file('style.css',css);
+    const chapters=state.chapters.filter(c=>c.kind!=='special');
+    const nav=state.chapters.find(c=>c.special==='nav'), cover=state.chapters.find(c=>c.special==='cover');
+    const manifest=[], spine=[];
+    let n=0;
+    chapters.forEach((c,idx)=>{
+      n++; const fn=`ch${String(n).padStart(3,'0')}.xhtml`;
+      const html=`<!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><meta charset="utf-8"/><title>${esc(c.title)}</title><link rel="stylesheet" href="style.css"/></head><body><h1>${esc(c.title)}</h1>${c.html||''}</body></html>`;
+      oebps.file(fn,html); manifest.push(`<item id="c${n}" href="${fn}" media-type="application/xhtml+xml"/>`); spine.push(`<itemref idref="c${n}"/>`);
+    });
+    if(cover){ oebps.file('cover.xhtml',`<!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><meta charset="utf-8"/><title>封面</title><link rel="stylesheet" href="style.css"/></head><body>${cover.html||''}</body></html>`); manifest.unshift('<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>'); }
+    const opf=`<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>${esc(state.meta.title)}</dc:title><dc:creator>${esc(state.meta.author)}</dc:creator><dc:identifier id="bookid">urn:uuid:${uid()}</dc:identifier></metadata><manifest>${manifest.join('')}</manifest><spine>${spine.join('')}</spine></package>`;
+    oebps.file('content.opf',opf);
+    const navXml=`<?xml version="1.0"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><meta charset="utf-8"/><title>目录</title></head><body><nav epub:type="toc"><h1>目录</h1><ol>${state.toc.filter(t=>t.chapterId).map(t=>{const c=state.chapters.find(x=>x.id===t.chapterId);if(!c||c.kind==='special') return '';return `<li>${esc(t.title)}</li>`;}).filter(Boolean).join('')}</ol></nav></body></html>`;
+    oebps.file('nav.xhtml',navXml);
+    const blob=await zip.generateAsync({type:'blob',mimeType:'application/epub+zip'});
+    if(window.saveAs) window.saveAs(blob,fname); else downloadBlob(blob,fname);
+    hideLoading(); toast('导出成功：'+fname);
+  }catch(e){ hideLoading(); console.error(e); toast('导出失败：'+(e.message||'')); }
 }
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&!state._importing)saveDraft(false)});
-
-/* ============ 全局错误兜底 ============ */
-window.addEventListener('error',e=>{console.error('Global error:',e.error||e.message);if(/JSZip/.test(e.message||''))toast('JSZip 相关错误：'+e.message,5000)});
+function downloadBlob(blob,fname){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);}
+/* ============ 草稿（双保险 + 恢复提醒） ============ */
+function scheduleDraftSave(){ if(scheduleDraftSave._t) clearTimeout(scheduleDraftSave._t); scheduleDraftSave._t=setTimeout(saveDraft,900); }
+function saveDraft(){
+  try{
+    const data={chapters:state.chapters,toc:state.toc,meta:state.meta,activeId:state.activeId,ts:Date.now()};
+    localStorage.setItem(RESTORE_KEY,JSON.stringify(data)); state.dirty=false;
+  }catch(e){console.warn('草稿保存失败',e);}
+}
+function loadDraft(){
+  try{
+    const raw=localStorage.getItem(RESTORE_KEY); if(!raw) return false;
+    const d=JSON.parse(raw); if(!d||!Array.isArray(d.chapters)||!d.chapters.length) return false;
+    state.chapters=d.chapters; state.toc=d.toc||[]; state.meta=d.meta||{title:'未命名',author:''};
+    state.activeId=d.activeId&&state.chapters.some(c=>c.id===d.activeId)?d.activeId:state.chapters[0].id;
+    state.hists={}; syncTocFromChapters(); return true;
+  }catch(e){console.warn('草稿读取失败',e);return false;}
+}
+function maybeShowRestore(){
+  const raw=localStorage.getItem(RESTORE_KEY); if(!raw) return;
+  try{const d=JSON.parse(raw);if(d&&Array.isArray(d.chapters)&&d.chapters.length){$('#restoreBar').classList.add('show');}}catch(e){}
+}
+/* ============ 事件绑定 ============ */
+$('#btnImport').onclick=()=>$('#fileInput').click();
+$('#fileInput').onchange=(e)=>{const f=e.target.files&&e.target.files[0];if(f) importEpub(f);e.target.value='';};
+$('#btnSave').onclick=()=>{saveDraft();toast('草稿已保存');};
+$('#btnBackup').onclick=()=>{saveDraft();toast('已备份（草稿已存本地）');};
+$('#btnExport').onclick=exportEpub;
+$('#btnNew').onclick=()=>newChapter();
+$('#btnAddCh').onclick=()=>newChapter();
+$('#btnAddToc').onclick=()=>{state.toc.push({id:uid(),title:'新目录项',chapterId:state.activeId,manual:true});renderToc();};
+$('#btnRestore').onclick=()=>{if(loadDraft()){switchChapter(state.activeId);renderChapters();renderToc();toast('草稿已恢复');}$('#restoreBar').classList.remove('show');};
+$('#btnDiscard').onclick=()=>{localStorage.removeItem(RESTORE_KEY);state.dirty=false;$('#restoreBar').classList.remove('show');toast('已丢弃草稿');};
+$('#edTitle').oninput=()=>{const c=state.chapters.find(x=>x.id===state.activeId);if(c){c.title=$('#edTitle').value;syncTocFromChapters();renderChapters();state.dirty=true;scheduleDraftSave();}};
+$('#editor').addEventListener('input',onEdit);
+$('#toolbar').addEventListener('click',(e)=>{
+  const b=e.target.closest('button[data-cmd]'); if(!b) return;
+  const cmd=b.dataset.cmd, val=b.dataset.val;
+  if(cmd==='undo'){doUndo();return;} if(cmd==='redo'){doRedo();return;}
+  if(cmd==='createLink'){const u=prompt('链接地址','https://');if(u) document.execCommand(cmd,false,u);return;}
+  document.execCommand(cmd,false,val||null);
+});
+// 侧栏标签
+$$('#sideTabs .tab').forEach(t=>t.onclick=()=>{$$('#sideTabs .tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');['ch','toc','meta'].forEach(k=>$('#tab-'+k).classList.toggle('hidden',t.dataset.tab!==k));});
+// 手机侧栏开关 + 遮罩
+$('#menuBtn').onclick=()=>{$('#sidebar').classList.add('open');$('#scrim').classList.add('show');};
+$('#scrim').onclick=closeSidebar;
+function closeSidebar(){$('#sidebar').classList.remove('open');$('#scrim').classList.remove('show');}
+// 元数据
+$('#metaTitle').oninput=()=>{state.meta.title=$('#metaTitle').value;scheduleDraftSave();};
+$('#metaAuthor').oninput=()=>{state.meta.author=$('#metaAuthor').value;scheduleDraftSave();};
+// 页面卸载/切后台双保险
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveDraft();});
+window.addEventListener('pagehide',saveDraft);
+// 全局错误兜底
+window.addEventListener('error',(e)=>{console.error('全局错误',e.error||e.message);toast('发生错误：'+(e.message||''));});
+/* ============ 初始化 ============ */
+function init(){
+  if(loadDraft()){ switchChapter(state.activeId); renderChapters(); renderToc(); }
+  else{
+    // 默认空白一本书
+    const c={id:uid(),title:'第 1 章',html:'<p>欢迎使用 EPUB 分章工具 V5。</p><p>点击「📂 导入」选择 .epub 文件，将自动按 me/ta 轮次分章（前言 + 第 N 章）。</p>',ordinal:1};
+    state.chapters=[c]; state.toc=[{id:uid(),title:c.title,chapterId:c.id,manual:false}]; state.activeId=c.id; switchChapter(c.id); renderChapters(); renderToc();
+  }
+  $('#metaTitle').value=state.meta.title; $('#metaAuthor').value=state.meta.author;
+  maybeShowRestore();
+}
+init();
 </script>
 </body>
 </html>
