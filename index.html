@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1976d2">
-<title>EPUB 分章工具 V5.1</title>
+<title>EPUB 分章工具 V5</title>
 <style>
 :root{--blue:#1976d2;--blue-d:#1565c0;--ink:#1a1a1a;--sub:#666;--line:#e5e5e5;--bg:#f5f7fa;--me:#e3f0ff;--ta:#fff1e6}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -13,7 +13,7 @@ body{font:15px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;colo
 button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 input,textarea{font:inherit}
 a{color:var(--blue);text-decoration:none}
-/* ===== 顶部工具栏 ===== */
+/* ===== 顶部固定工具栏 ===== */
 #topbar{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--blue);color:#fff;display:flex;align-items:center;height:48px;padding:0 6px;gap:2px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
 #topbar .hamb{width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;border-radius:8px}
 #topbar .hamb:active{background:rgba(255,255,255,.2)}
@@ -25,16 +25,17 @@ a{color:var(--blue);text-decoration:none}
 #scrim.show{display:block}
 #drawer{position:fixed;top:0;bottom:0;left:0;z-index:90;width:86vw;max-width:340px;background:#fff;transform:translateX(-100%);transition:transform .25s ease;display:flex;flex-direction:column;box-shadow:2px 0 12px rgba(0,0,0,.15)}
 #drawer.open{transform:translateX(0)}
-#drawerHead{height:48px;display:flex;align-items:center;padding:0 12px;background:var(--blue);color:#fff;font-weight:600;font-size:16px;gap:8px}
+#drawerHead{height:48px;display:flex;align-items:center;padding:0 12px;background:var(--blue);color:#fff;font-weight:600;font-size:16px;gap:8px;flex-shrink:0}
 #drawerHead .close{margin-left:auto;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:20px;border-radius:6px}
 #drawerHead .close:active{background:rgba(255,255,255,.2)}
-#drawerTabs{display:flex;border-bottom:1px solid var(--line);background:#fafafa}
+#drawerTabs{display:flex;border-bottom:1px solid var(--line);background:#fafafa;flex-shrink:0}
 #drawerTabs button{flex:1;padding:10px 0;font-size:14px;color:var(--sub);border-bottom:2px solid transparent}
 #drawerTabs button.on{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
-#drawerBody{flex:1;overflow-y:auto;padding:8px}
-.dpanel{display:none}
-.dpanel.on{display:block}
+#drawerBody{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column}
+.dpanel{display:none;flex:1}
+.dpanel.on{display:flex;flex-direction:column}
 /* 章节列表 */
+#chList{flex:1;overflow-y:auto}
 .chitem{display:flex;align-items:center;gap:6px;padding:8px 6px;border-bottom:1px solid #f0f0f0;flex-wrap:wrap}
 .chitem .chtitle{flex:1;min-width:120px;font-size:14px;color:var(--ink);word-break:break-all}
 .chitem .chtitle.manual{color:var(--blue-d);font-weight:600}
@@ -43,21 +44,23 @@ a{color:var(--blue);text-decoration:none}
 .chitem .chbtn:active{background:#e0e0e0}
 .chitem .chbtn.del{color:#c0392b}
 .chitem.active{background:#eaf2fd;border-radius:6px}
-#sideFooter{border-top:2px dashed var(--line);margin-top:10px;padding-top:10px;display:flex;flex-direction:column;gap:8px}
+#sideFooter{border-top:2px dashed var(--line);margin-top:10px;padding-top:10px;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
 #sideFooter button{width:100%;padding:10px;border-radius:8px;font-size:14px;font-weight:600}
 #btnNewCh{background:var(--blue);color:#fff}
 #btnNewCh:active{background:var(--blue-d)}
 /* 目录面板 */
+#tocList{flex:1;overflow-y:auto}
 #tocList .tocitem{display:flex;align-items:center;gap:6px;padding:7px 4px;border-bottom:1px solid #f0f0f0}
 #tocList .tocitem input{flex:1;font-size:13px;padding:5px 7px;border:1px solid var(--line);border-radius:5px;min-width:0}
 #tocList .tocitem select{padding:5px;border:1px solid var(--line);border-radius:5px;font-size:12px}
 #tocList .tocitem .del{color:#c0392b;font-size:16px;padding:0 4px}
 /* 元数据 */
+#metaPanel{flex:1;overflow-y:auto}
 #metaPanel .mrow{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
 #metaPanel label{font-size:13px;color:var(--sub)}
 #metaPanel input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:14px}
 /* ===== 主编辑区 ===== */
-#main{position:fixed;top:48px;left:0;right:0;bottom:0;overflow-y:auto;padding:12px 12px 80px;background:#fff}
+#main{position:fixed;top:48px;left:0;right:0;bottom:0;overflow-y:auto;padding:12px 12px 80px;background:#fff;scroll-behavior:smooth}
 #chHead{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
 #chNameIn{font-size:16px;font-weight:600;padding:6px 10px;border:1px solid var(--line);border-radius:6px;flex:1;min-width:140px}
 #chStat{font-size:12px;color:var(--sub);white-space:nowrap}
@@ -141,7 +144,7 @@ a{color:var(--blue);text-decoration:none}
     </div>
     <div class="dpanel" id="pMeta">
       <div id="metaPanel">
-        <div class="mrow"><label>书名</label><input id="metaTitle" placeholder="留空则导出名为 未命名.epub"></div>
+        <div class="mrow"><label>书名（导出文件名也以此为准）</label><input id="metaTitle" placeholder="留空则导出名为 未命名.epub"></div>
         <div class="mrow"><label>作者</label><input id="metaAuthor" placeholder="可选"></div>
       </div>
     </div>
@@ -208,24 +211,25 @@ a{color:var(--blue);text-decoration:none}
 /* ============ 工具函数 ============ */
 const $=(s)=>document.querySelector(s);
 const $$=(s)=>document.querySelectorAll(s);
-const toast=(m,ms=2400)=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)};
+const toast=(m,ms=2400)=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms);};
 const esc=(s)=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const safeName=(s)=>String(s).replace(/[\/\\:*?"<>|\s]+/g,'_').replace(/__+/g,'_').replace(/^_|_$/g,'')||'未命名';
 function fmtCount(n){n=+n||0;return n>=10000?(n/10000).toFixed(1).replace(/\.0$/,'')+'万字':n+'字';}
 /* ============ 全局状态 ============ */
 const State={
-  chapters:[],   // {id,title,html,manual,role}
-  toc:[],        // {id,label,boundChId}
+  chapters:[],
+  toc:[],
   meta:{title:'',author:''},
-  cur:null,      // 当前章节 id
-  hist:{},       // per-chapter undo stacks {id:[...]}
+  cur:null,
+  hist:{},
   histIdx:{},
   dirty:false,
   importing:false,
-  draftKey:'epub_draft_v51',
-  metaKey:'epub_meta_v51',
+  draftKey:'epub_draft_v5',
+  metaKey:'epub_meta_v5',
 };
 const HIST_MAX=30;
+const SPECIAL_TITLES=['封面','目录','开场白','前言'];
 /* ============ 抽屉 ============ */
 const drawer=$('#drawer'),scrim=$('#scrim');
 function openDrawer(tab){drawer.classList.add('open');scrim.classList.add('show');if(tab)$('#drawerTabs button[data-tab="'+tab+'"]').click();}
@@ -247,52 +251,276 @@ function pushHist(){if(!State.cur)return;const id=State.cur;const html=$('#edito
 $('#editor').addEventListener('input',pushHist);
 function doUndoRedo(dir){if(!State.cur)return;const id=State.cur;const stack=State.hist[id];if(!stack||stack.length<2)return;let i=State.histIdx[id]??stack.length-1;i+=dir;if(i<0||i>=stack.length)return;State.histIdx[id]=i;$('#editor').innerHTML=stack[i];markDirty();}
 /* ============ 章节渲染 ============ */
-function renderChapters(){const box=$('#chList');box.innerHTML=State.chapters.map((c,i)=>{const special=['封面','目录','开场白'].includes(c.title);return `<div class="chitem${State.cur===c.id?' active':''}" data-id="${c.id}"><span class="chtitle${c.manual?' manual':''}">${esc(c.title)}</span><span class="chwords">${fmtCount(countHtml(c.html))}</span>${i>0&&!special?`<button class="chbtn merge" data-id="${c.id}" title="合并到上一章">合并↑</button>`:''}<button class="chbtn del" data-id="${c.id}" title="删除">×</button></div>`;}).join('');$('#bottomStat').textContent=`共 ${State.chapters.length} 章 · 总 ${fmtCount(State.chapters.reduce((a,c)=>a+countHtml(c.html),0))}`;}
 function countHtml(html){const t=String(html).replace(/<[^>]+>/g,'');return t.replace(/\s/g,'').length;}
+function renderChapters(){const box=$('#chList');box.innerHTML=State.chapters.map((c,i)=>{const special=SPECIAL_TITLES.includes(c.title);return `<div class="chitem${State.cur===c.id?' active':''}" data-id="${c.id}"><span class="chtitle${c.manual?' manual':''}">${esc(c.title)}</span><span class="chwords">${fmtCount(countHtml(c.html))}</span>${i>0&&!special?`<button class="chbtn merge" data-id="${c.id}" title="合并到上一章">合并↑</button>`:''}<button class="chbtn del" data-id="${c.id}" title="删除">×</button></div>`;}).join('');$('#bottomStat').textContent=`共 ${State.chapters.length} 章 · 总 ${fmtCount(State.chapters.reduce((a,c)=>a+countHtml(c.html),0))}`;}
 function renderToc(){const box=$('#tocList');box.innerHTML=State.toc.map((t,i)=>`<div class="tocitem" data-id="${t.id}"><input value="${esc(t.label)}" data-id="${t.id}" placeholder="目录项"><select data-id="${t.id}"><option value="">— 绑定章节 —</option>${State.chapters.map(c=>`<option value="${c.id}"${c.id===t.boundChId?' selected':''}>${esc(c.title)}</option>`).join('')}</select><span class="del" data-id="${t.id}" title="删除">×</span></div>`).join('')||'<div style="color:#999;font-size:13px;padding:8px">暂无目录项</div>';}
-function autoReorder(){let n=0;State.chapters.forEach(c=>{if(['封面','目录','开场白'].includes(c.title))return;n++;const newTitle=`第${n}章`;if(c.title!==newTitle){if(c.manual&&/^第\s*\d+\s*章/.test(c.title)){}else{c.manual=false;}c.title=newTitle;}});State.toc=State.chapters.map(c=>({id:c.id,label:c.title,boundChId:c.id}));renderChapters();renderToc();markDirty();toast('已自动重新排序并更新目录');}
-$('#chList').addEventListener('click',(e)=>{const del=e.target.closest('.chbtn.del');const merge=e.target.closest('.chbtn.merge');if(del){const id=del.dataset.id;const c=State.chapters.find(x=>x.id===id);if(!c||['封面','目录','开场白'].includes(c.title))return;if(!confirm(`确定删除「${c.title}」？`))return;State.chapters=State.chapters.filter(x=>x.id!==id);if(State.cur===id)selectChapter(State.chapters[0]?.id||null);autoReorder();return;}if(merge){const id=merge.dataset.id;const idx=State.chapters.findIndex(x=>x.id===id);if(idx<=0)return;const prev=State.chapters[idx-1];const cur=State.chapters[idx];prev.html=(prev.html||'')+(cur.html||'');State.chapters.splice(idx,1);if(State.cur===id)selectChapter(prev.id);autoReorder();toast(`已合并到「${prev.title}」`);return;}const item=e.target.closest('.chitem');if(item)selectChapter(item.dataset.id);});
+/* ============ 自动重新排序 + 目录同步（合并后自动调用） ============ */
+function autoReorder(){
+  let n=0;
+  State.chapters.forEach(c=>{
+    if(SPECIAL_TITLES.includes(c.title))return;
+    n++;
+    const newTitle=`第${n}章`;
+    if(c.title!==newTitle){
+      // 若手动标题仅含"第X章"前缀（用户未自定义），则跟随重排
+      if(c.manual&&/^第\s*\d+\s*章/.test(c.title)){
+        // 用户改过但仍是"第X章"格式 → 更新编号
+        c.title=newTitle;
+      }else if(!c.manual){
+        c.title=newTitle;
+      }
+      // 若 manual=true 且标题不是"第X章"格式（用户自定义了名字），保留原名
+    }
+  });
+  // 目录：清空后按当前章节顺序重建；保留 manual 标记
+  State.toc=State.chapters.map(c=>{
+    const existing=State.toc.find(t=>t.boundChId===c.id);
+    return {id:c.id,label:c.title,boundChId:c.id,manual:!!(existing&&existing.manual)};
+  });
+  renderChapters();renderToc();markDirty();
+}
+$('#chList').addEventListener('click',(e)=>{
+  const del=e.target.closest('.chbtn.del');
+  const merge=e.target.closest('.chbtn.merge');
+  if(del){const id=del.dataset.id;const c=State.chapters.find(x=>x.id===id);if(!c||SPECIAL_TITLES.includes(c.title))return;if(!confirm(`确定删除「${c.title}」？`))return;State.chapters=State.chapters.filter(x=>x.id!==id);if(State.cur===id)selectChapter(State.chapters[0]?.id||null);autoReorder();return;}
+  if(merge){const id=merge.dataset.id;const idx=State.chapters.findIndex(x=>x.id===id);if(idx<=0)return;const prev=State.chapters[idx-1];const cur=State.chapters[idx];prev.html=(prev.html||'')+(cur.html||'');State.chapters.splice(idx,1);if(State.cur===id)selectChapter(prev.id);autoReorder();toast(`已合并到「${prev.title}」`);return;}
+  const item=e.target.closest('.chitem');if(item)selectChapter(item.dataset.id);
+});
 $('#tocList').addEventListener('input',(e)=>{const inp=e.target.closest('input[data-id]');if(!inp)return;const t=State.toc.find(x=>x.id===inp.dataset.id);if(t){t.label=inp.value;const c=State.chapters.find(x=>x.id===t.boundChId);if(c&&c.title!==inp.value){c.title=inp.value;c.manual=true;}}renderChapters();markDirty();});
 $('#tocList').addEventListener('change',(e)=>{const sel=e.target.closest('select[data-id]');if(!sel)return;const t=State.toc.find(x=>x.id===sel.dataset.id);if(t)t.boundChId=sel.value;markDirty();});
 $('#tocList').addEventListener('click',(e)=>{const x=e.target.closest('.del');if(!x)return;State.toc=State.toc.filter(t=>t.id!==x.dataset.id);renderToc();markDirty();});
-/* ============ 章节选择 / 加载 ============ */
-function selectChapter(id){if(State.cur&&id!==State.cur){State.chapters.find(x=>x.id===State.cur).html=$('#editor').innerHTML;}
- State.cur=id;const c=State.chapters.find(x=>x.id===id);$('#editor').innerHTML=c?.html||'';$('#chNameIn').value=c?.title||'';$('#chStat').textContent=c?`第 ${(State.chapters.indexOf(c)+1)}/${State.chapters.length} 章 · ${fmtCount(countHtml(c.html))}`:'';renderChapters();setTimeout(()=>{window.scrollTo(0,0);$('#main').scrollTop=0;},0);}
+/* ============ 章节选择 / 加载（自动回顶） ============ */
+function selectChapter(id){
+  if(State.cur&&id!==State.cur){State.chapters.find(x=>x.id===State.cur).html=$('#editor').innerHTML;}
+  State.cur=id;
+  const c=State.chapters.find(x=>x.id===id);
+  $('#editor').innerHTML=c?.html||'';
+  $('#chNameIn').value=c?.title||'';
+  $('#chStat').textContent=c?`第 ${(State.chapters.indexOf(c)+1)}/${State.chapters.length} 章 · ${fmtCount(countHtml(c.html))}`:'';
+  renderChapters();
+  // 切换章节后自动回顶
+  setTimeout(()=>{window.scrollTo(0,0);$('#main').scrollTop=0;},0);
+}
 $('#chNameIn').addEventListener('input',()=>{const c=State.chapters.find(x=>x.id===State.cur);if(!c)return;c.title=$('#chNameIn').value;c.manual=true;renderChapters();renderToc();markDirty();});
-$('#editor').addEventListener('scroll',()=>{},{passive:true});
-/* ============ 新建章节（me/ta 双区块） ============ */
+/* ============ 新建章节（me/ta 双区块模板） ============ */
 $('#btnNewCh').addEventListener('click',()=>{$('#newMe').value='';$('#newTa').value='';$('#modalMask').addClass('show');setTimeout(()=>$('#newMe').focus(),100);closeDrawer();});
 $('#newChClose').addEventListener('click',()=>$('#modalMask').removeClass('show'));
 $('#newChCancel').addEventListener('click',()=>$('#modalMask').removeClass('show'));
-$('#newChOk').addEventListener('click',()=>{const me=$('#newMe').value.trim();const ta=$('#newTa').value.trim();if(!me&&!ta)return toast('请至少填写一个区块');let body='';if(me)body+=`<div class="me"><p class="who">我</p>${me.split(/\n{2,}/).map(p=>`<p>${esc(p).replace(/\n/g,'<br>')}</p>`).join('')}</div>`;if(ta)body+=`<div class="ta"><p class="who">他</p>${ta.split(/\n{2,}/).map(p=>`<p>${esc(p).replace(/\n/g,'<br>')}</p>`).join('')}</div>`;const maxN=State.chapters.reduce((m,c)=>{const mm=c.title.match(/第\s*(\d+)\s*章/);return mm?Math.max(m,+mm[1]):m;},0);const title=`第${maxN+1}章`;const id='ch'+Date.now();State.chapters.push({id,title,html:body,manual:false,role:'chat'});State.toc.push({id,label:title,boundChId:id});selectChapter(id);autoReorder();$('#modalMask').removeClass('show');toast('已添加新章节');});
+$('#newChOk').addEventListener('click',()=>{
+  const me=$('#newMe').value.trim();const ta=$('#newTa').value.trim();
+  if(!me&&!ta)return toast('请至少填写一个区块');
+  let body='';
+  if(me)body+=`<div class="me"><p class="who">我</p>${me.split(/\n{2,}/).map(p=>`<p>${esc(p).replace(/\n/g,'<br>')}</p>`).join('')}</div>`;
+  if(ta)body+=`<div class="ta"><p class="who">他</p>${ta.split(/\n{2,}/).map(p=>`<p>${esc(p).replace(/\n/g,'<br>')}</p>`).join('')}</div>`;
+  const maxN=State.chapters.reduce((m,c)=>{const mm=c.title.match(/第\s*(\d+)\s*章/);return mm?Math.max(m,+mm[1]):m;},0);
+  const title=`第${maxN+1}章`;
+  const id='ch'+Date.now();
+  State.chapters.push({id,title,html:body,manual:false,role:'chat'});
+  State.toc.push({id,label:title,boundChId:id});
+  selectChapter(id);
+  autoReorder();
+  $('#modalMask').removeClass('show');toast('已添加新章节');
+});
 /* ============ 导入 / 分章核心 ============ */
 $('#btnImport').addEventListener('click',()=>$('#fileInput').click());
 $('#fileInput').addEventListener('change',async(e)=>{const f=e.target.files[0];if(!f)return;await doImport(f);e.target.value='';});
-async function doImport(file){if(typeof JSZip!=='function'){toast('JSZip 库加载失败，导入/导出将不可用');console.error('JSZip not defined');return;}toast('正在导入并分章…',9999);try{State.importing=true;const buf=await file.arrayBuffer();const zip=await JSZip.loadAsync(buf);const entries=Object.values(zip.files).filter(n=>!n.dir);const navEntry=entries.find(n=>/nav\.x?html?$/i.test(n.name));const coverEntry=entries.find(n=>/cover\.x?html?$/i.test(n.name));const chEntries=entries.filter(n=>!/nav\.x?html?$/i.test(n.name)&&!/cover\.x?html?$/i.test(n.name)&&/\.x?html?$/i.test(n.name));let navHtml='';if(navEntry)try{navHtml=await navEntry.async('string');}catch(e){}let coverHtml='';if(coverEntry)try{coverHtml=await coverEntry.async('string');}catch(e){}const allCh=[];for(const ent of chEntries){let html='';try{html=await ent.async('string');}catch(e){continue;}const body=extractBody(html);allCh.push({name:ent.name,html:body});}State.chapters=[];State.toc=[];State.hist={};State.histIdx={};if(navHtml){State.chapters.push({id:'nav',title:'目录',html:navHtml,manual:false,role:'nav'});State.toc.push({id:'nav',label:'目录',boundChId:'nav'});}if(coverHtml){State.chapters.push({id:'cover',title:'封面',html:coverHtml,manual:false,role:'cover'});State.toc.push({id:'cover',label:'封面',boundChId:'cover'});}const prologue=allCh.find(c=>isPrologue(c.html));let rem=allCh;if(prologue){rem=allCh.filter(c=>c!==prologue);const firstMeIdx=indexOfFirstMeTa(prologue.html);let proHtml=prologue.html,firstChTail='';if(firstMeIdx>0){firstChTail=prologue.html.slice(firstMeIdx);proHtml=prologue.html.slice(0,firstMeIdx);}State.chapters.push({id:'prologue',title:'开场白',html:proHtml,manual:false,role:'prologue'});State.toc.push({id:'prologue',label:'开场白',boundChId:'prologue'});if(firstChTail){rem=[{name:prologue.name,html:firstChTail},...rem];}}else{const first=allCh[0];if(first){const firstMeIdx=indexOfFirstMeTa(first.html);if(firstMeIdx>0){const tail=first.html.slice(firstMeIdx);rem=[{name:first.name,html:tail},...rem.slice(1)];}}}let n=0;for(const c of rem){const rounds=splitByRounds(c.html);for(const r of rounds){n++;const title=`第${n}章`;State.chapters.push({id:'gen'+Date.now()+'_'+n+'_'+Math.random().toString(36).slice(2,6),title,html:r,manual:false,role:'chat'});State.toc.push({id:State.chapters[State.chapters.length-1].id,label:title,boundChId:State.chapters[State.chapters.length-1].id});}}if(State.chapters.length===0){State.chapters.push({id:'empty',title:'开场白',html:'<p></p>',manual:false,role:'prologue'});State.toc.push({id:'empty',label:'开场白',boundChId:'empty'});}selectChapter(State.chapters[0]?.id||null);renderChapters();renderToc();State.dirty=false;try{localStorage.removeItem(State.draftKey);}catch(e){}toast(`导入完成：${State.chapters.length} 章`);}catch(err){console.error(err);toast('导入失败：'+(err.message||err));}finally{State.importing=false;}}
+async function doImport(file){
+  if(typeof JSZip!=='function'){toast('JSZip 库加载失败，导入/导出将不可用');console.error('JSZip not defined');return;}
+  toast('正在导入并分章…',9999);
+  try{
+    State.importing=true;
+    const buf=await file.arrayBuffer();
+    const zip=await JSZip.loadAsync(buf);
+    const entries=Object.values(zip.files).filter(n=>!n.dir);
+    const navEntry=entries.find(n=>/nav\.x?html?$/i.test(n.name));
+    const coverEntry=entries.find(n=>/cover\.x?html?$/i.test(n.name));
+    const chEntries=entries.filter(n=>!/nav\.x?html?$/i.test(n.name)&&!/cover\.x?html?$/i.test(n.name)&&/\.x?html?$/i.test(n.name));
+    let navHtml='';if(navEntry)try{navHtml=await navEntry.async('string');}catch(e){}
+    let coverHtml='';if(coverEntry)try{coverHtml=await coverEntry.async('string');}catch(e){}
+    const allCh=[];
+    for(const ent of chEntries){let html='';try{html=await ent.async('string');}catch(e){continue;}allCh.push({name:ent.name,html:extractBody(html)});}
+    // 重置状态
+    State.chapters=[];State.toc=[];State.hist={};State.histIdx={};
+    // 目录 / 封面
+    if(navHtml){State.chapters.push({id:'nav',title:'目录',html:navHtml,manual:false,role:'nav'});State.toc.push({id:'nav',label:'目录',boundChId:'nav'});}
+    if(coverHtml){State.chapters.push({id:'cover',title:'封面',html:coverHtml,manual:false,role:'cover'});State.toc.push({id:'cover',label:'封面',boundChId:'cover'});}
+    // 识别"前言"章节：含 h1 或 p.meta 的章节视为前言
+    const prologueIdx=allCh.findIndex(c=>isPrologue(c.html));
+    let rem=allCh;
+    if(prologueIdx>=0){
+      const prologue=allCh[prologueIdx];
+      rem=allCh.filter((_,i)=>i!==prologueIdx);
+      const firstMeIdx=indexOfFirstMeTa(prologue.html);
+      let proHtml=prologue.html,firstChTail='';
+      if(firstMeIdx>0){
+        // 前言 = 首个 me/ta 之前的内容
+        proHtml=prologue.html.slice(0,firstMeIdx);
+        firstChTail=prologue.html.slice(firstMeIdx);
+      }
+      // 【V5 新增】前言末尾的 h1 / p.meta 块 → 移到第一章开头
+      const moved=stripTrailingHeadBlocks(proHtml);
+      proHtml=moved.remaining;
+      if(moved.headBlocks){firstChTail=(moved.headBlocks)+firstChTail;}
+      State.chapters.push({id:'prologue',title:'前言',html:proHtml,manual:false,role:'prologue'});
+      State.toc.push({id:'prologue',label:'前言',boundChId:'prologue'});
+      if(firstChTail.trim()){rem=[{name:prologue.name,html:firstChTail},...rem];}
+    }else{
+      // 无前言：若第一个章节开头有 me/ta 之前的内容，也做同样处理
+      const first=allCh[0];
+      if(first){const firstMeIdx=indexOfFirstMeTa(first.html);if(firstMeIdx>0){const tail=first.html.slice(firstMeIdx);rem=[{name:first.name,html:tail},...rem.slice(1)];}}
+    }
+    // 按轮次分章
+    let n=0;
+    for(const c of rem){
+      const rounds=splitByRounds(c.html);
+      for(const r of rounds){n++;const title=`第${n}章`;State.chapters.push({id:'gen'+Date.now()+'_'+n+'_'+Math.random().toString(36).slice(2,6),title,html:r,manual:false,role:'chat'});State.toc.push({id:State.chapters[State.chapters.length-1].id,label:title,boundChId:State.chapters[State.chapters.length-1].id});}
+    }
+    if(State.chapters.length===0){State.chapters.push({id:'empty',title:'前言',html:'<p></p>',manual:false,role:'prologue'});State.toc.push({id:'empty',label:'前言',boundChId:'empty'});}
+    selectChapter(State.chapters[0]?.id||null);
+    renderChapters();renderToc();
+    State.dirty=false;
+    // 导入完成后清除旧草稿（新的章节结构已建立）
+    try{localStorage.removeItem(State.draftKey);}catch(e){}
+    toast(`导入完成：${State.chapters.length} 章`);
+  }catch(err){console.error(err);toast('导入失败：'+(err.message||err));}
+  finally{State.importing=false;}
+}
 function extractBody(html){const m=html.match(/<body[^>]*>([\s\S]*)<\/body>/i);return m?m[1].trim():html.trim();}
 function isPrologue(html){if(/<nav\b/i.test(html)&&/epub:type=["']toc/i.test(html))return false;return /<h1[^>]*>/i.test(html)||/<p[^>]*class=["']meta["']/i.test(html);}
 function indexOfFirstMeTa(html){const re=/<div[^>]+class="(me|ta)"[^>]*>/gi;const m=re.exec(html);return m?m.index:-1;}
-function splitByRounds(html){const blocks=[];const re=/<div[^>]+class="(me|ta)"[^>]*>[\s\S]*?<\/div>/gi;let m,last=0;while((m=re.exec(html))){if(m.index>last){const between=html.slice(last,m.index).trim();if(between)blocks.push(between);}blocks.push(m[0]);last=re.lastIndex;}if(last<html.length){const tail=html.slice(last).trim();if(tail)blocks.push(tail);}if(blocks.length===0)return [html];const rounds=[];let cur='';for(const b of blocks){cur+=b;if(/class="ta"/i.test(b)){rounds.push(cur);cur='';}}if(cur.trim())rounds.push(cur);return rounds.length?rounds:[html];}
+/* 将一个 html 字符串按 <div class="me|ta"> 块拆分：
+   连续的 me/ta 块归为同一"轮次"，直到遇到非 me/ta 内容或文本结束 */
+function splitByRounds(html){
+  const blocks=[];
+  const re=/<div[^>]+class="(me|ta)"[^>]*>[\s\S]*?<\/div>/gi;
+  let m,last=0;
+  while((m=re.exec(html))){if(m.index>last){const between=html.slice(last,m.index).trim();if(between)blocks.push(between);}blocks.push(m[0]);last=re.lastIndex;}
+  if(last<html.length){const tail=html.slice(last).trim();if(tail)blocks.push(tail);}
+  if(blocks.length===0)return [html];
+  const rounds=[];let cur='';
+  for(const b of blocks){cur+=b;if(/class="ta"/i.test(b)){rounds.push(cur);cur='';}}
+  if(cur.trim())rounds.push(cur);
+  return rounds.length?rounds:[html];
+}
+/* 【V5】从 html 末尾剥离 h1 / p.meta 块，移到下一章开头 */
+function stripTrailingHeadBlocks(html){
+  // 匹配末尾连续的：可选的空白 + 一个完整的 <h1>...</h1> 或 <p class="meta">...</p>
+  const tailRe=/(?:[\s]*)((?:<h1[^>]*>[\s\S]*?<\/h1>|<p[^>]*class=["']meta["'][^>]*>[\s\S]*?<\/p>))[\s]*$/i;
+  let headBlocks='',remaining=html;
+  let m;
+  // 循环剥离末尾的 head 块（可能有多个，如 h1 + p.meta）
+  while((m=tailRe.exec(remaining))){headBlocks=m[1]+headBlocks;remaining=remaining.slice(0,m.index);m.lastIndex=0;tailRe.lastIndex=0;}
+  return {headBlocks,remaining:remaining.trim()};
+}
 /* ============ 保存 / 备份 / 导出 ============ */
 $('#btnSave').addEventListener('click',()=>{if(State.cur)State.chapters.find(x=>x.id===State.cur).html=$('#editor').innerHTML;const data={chapters:State.chapters,toc:State.toc,meta:State.meta};try{localStorage.setItem(State.draftKey,JSON.stringify(data));State.dirty=false;toast('已保存草稿');}catch(e){toast('保存失败：'+e.message);}});
 $('#btnBackup').addEventListener('click',()=>{if(State.cur)State.chapters.find(x=>x.id===State.cur).html=$('#editor').innerHTML;const data=JSON.stringify({chapters:State.chapters,toc:State.toc,meta:State.meta},null,0);const blob=new Blob([data],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(safeName(State.meta.title)||'epub_backup')+'_backup.json';a.click();URL.revokeObjectURL(a.href);toast('已导出备份 JSON');});
-$('#btnExport').addEventListener('click',async()=>{if(State.cur)State.chapters.find(x=>x.id===State.cur).html=$('#editor').innerHTML;const name=prompt('导出文件名（不含 .epub）',safeName(State.meta.title)||'未命名');if(name===null)return;await doExport(safeName(name)||'未命名');});
-async function doExport(fileName){if(typeof JSZip!=='function'){toast('JSZip 库加载失败');return;}toast('正在导出 EPUB…',9999);try{const zip=new JSZip();zip.file('mimetype','application/epub+zip',{compression:'STORE'});const metaInf=zip.folder('META-INF');metaInf.file('container.xml','<?xml version="1.0" encoding="UTF-8"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></rootfiles></container>');const oebps=zip.folder('OEBPS');const style=oebps.folder('style');style.file('style.css','body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:16px;color:#1a1a1a}.me{background:#e3f0ff;border-left:4px solid #4a90d9;padding:8px 10px;margin:8px 0;border-radius:4px}.ta{background:#fff1e6;border-left:4px solid #e08a3c;padding:8px 10px;margin:8px 0;border-radius:4px}.who{font-weight:700;color:#1565c0;font-size:13px;margin-bottom:2px}.meta{color:#666;font-size:12px;margin:4px 0}');const text=oebps.folder('text');const _ch2fn={};State.chapters.forEach((c,ii)=>{_ch2fn[c.id]=c.role==='nav'?'text/nav.xhtml':c.role==='cover'?'text/cover.xhtml':`text/ch${String(ii).padStart(3,'0')}.xhtml`;});const titles=[];State.chapters.forEach((c,i)=>{const fn=_ch2fn[c.id]||(c.role==='nav'?'text/nav.xhtml':c.role==='cover'?'text/cover.xhtml':`text/ch${String(i).padStart(3,'0')}.xhtml`);const safeTitle=esc(c.title||'未命名').replace(/"/g,'&quot;');const body=c.html||'<p></p>';const xhtml=`<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>\n<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="zh-CN">\n<head><meta charset="utf-8"/><title>${safeTitle}</title><link rel="stylesheet" type="text/css" href="style/style.css"/></head>\n<body>\n<h1>${safeTitle}</h1>\n${body}\n</body>\n</html>`;text.file(fn,xhtml);titles.push({id:fn,title:c.title});});let navBody='';State.toc.forEach(t=>{const c=State.chapters.find(x=>x.id===t.boundChId);if(!c)return;navBody+=`<li><a href="${_ch2fn[c.id]}">${esc(t.label||c.title)}</a></li>`;});const navXhtml=`<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>\n<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="zh-CN">\n<head><meta charset="utf-8"/><title>目录</title><link rel="stylesheet" type="text/css" href="style/style.css"/></head>\n<body epub:type="frontmatter">\n<nav epub:type="toc" id="toc">\n<h1>目录</h1>\n<ol>${navBody||'<li><a href="text/ch000.xhtml">开场白</a></li>'}</ol>\n</nav>\n</body>\n</html>`;text.file('nav.xhtml',navXhtml);let manifest='',spine='';titles.forEach((t,ii)=>{const id=t.id.replace(/\.xhtml$/,'')||('id'+ii);manifest+=`<item id="${esc(id)}" href="${esc(t.id)}" media-type="application/xhtml+xml"/>`;spine+=`<itemref idref="${esc(id)}"/>`;});const opf=`<?xml version="1.0" encoding="UTF-8"?>\n<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">\n<metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>${esc(State.meta.title||'未命名')}</dc:title><dc:creator>${esc(State.meta.author||'')}</dc:creator><dc:language>zh-CN</dc:language><meta property="dcterms:modified">${new Date().toISOString().slice(0,10)}</meta></metadata>\n<manifest>${manifest}<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/><item id="style" href="style/style.css" media-type="text/css"/></manifest>\n<spine toc="ncx">${spine}</spine>\n</package>`;oebps.file('content.opf',opf);let ncxNav='';titles.forEach((t,ii)=>{ncxNav+=`<navPoint id="nav${ii}" playOrder="${ii+1}"><navLabel><text>${esc(t.title)}</text></navLabel><content src="${esc(t.id)}"/></navPoint>`;});const ncx=`<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN" "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd"><ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><head><meta name="dtb:uid" content="bookid"/><meta name="dtb:depth" content="1"/></head><docTitle><text>${esc(State.meta.title||'未命名')}</text></docTitle><navMap>${ncxNav}</navMap></ncx>`;oebps.file('toc.ncx',ncx);const blob=await zip.generateAsync({type:'blob',mimeType:'application/epub+zip',compression:'DEFLATE'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fileName.endsWith('.epub')?fileName:(fileName+'.epub');a.click();URL.revokeObjectURL(a.href);toast('导出成功：'+a.download);}catch(err){console.error(err);toast('导出失败：'+(err.message||err));}})
+$('#btnExport').addEventListener('click',async()=>{if(State.cur)State.chapters.find(x=>x.id===State.cur).html=$('#editor').innerHTML;const baseName=safeName(State.meta.title)||'未命名';await doExport(baseName);});
+async function doExport(fileName){
+  if(typeof JSZip!=='function'){toast('JSZip 库加载失败');return;}
+  toast('正在导出 EPUB…',9999);
+  try{
+    const zip=new JSZip();
+    zip.file('mimetype','application/epub+zip',{compression:'STORE'});
+    const metaInf=zip.folder('META-INF');
+    metaInf.file('container.xml','<?xml version="1.0" encoding="UTF-8"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></rootfiles></container>');
+    const oebps=zip.folder('OEBPS');
+    const style=oebps.folder('style');
+    style.file('style.css','body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:16px;color:#1a1a1a}.me{background:#e3f0ff;border-left:4px solid #4a90d9;padding:8px 10px;margin:8px 0;border-radius:4px}.ta{background:#fff1e6;border-left:4px solid #e08a3c;padding:8px 10px;margin:8px 0;border-radius:4px}.who{font-weight:700;color:#1565c0;font-size:13px;margin-bottom:2px}.meta{color:#666;font-size:12px;margin:4px 0}');
+    const text=oebps.folder('text');
+    const _ch2fn={};
+    State.chapters.forEach((c,ii)=>{_ch2fn[c.id]=c.role==='nav'?'text/nav.xhtml':c.role==='cover'?'text/cover.xhtml':`text/ch${String(ii).padStart(3,'0')}.xhtml`;});
+    State.chapters.forEach((c,i)=>{
+      const fn=_ch2fn[c.id]||(c.role==='nav'?'text/nav.xhtml':c.role==='cover'?'text/cover.xhtml':`text/ch${String(i).padStart(3,'0')}.xhtml`);
+      const safeTitle=esc(c.title||'未命名').replace(/"/g,'&quot;');
+      const body=c.html||'<p></p>';
+      const xhtml=`<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>\n<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="zh-CN">\n<head><meta charset="utf-8"/><title>${safeTitle}</title><link rel="stylesheet" type="text/css" href="style/style.css"/></head>\n<body>\n<h1>${safeTitle}</h1>\n${body}\n</body>\n</html>`;
+      text.file(fn,xhtml);
+    });
+    // nav.xhtml
+    let navBody='';
+    State.toc.forEach(t=>{const c=State.chapters.find(x=>x.id===t.boundChId);if(!c)return;navBody+=`<li><a href="${_ch2fn[c.id]}">${esc(t.label||c.title)}</a></li>`;});
+    const navXhtml=`<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>\n<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="zh-CN">\n<head><meta charset="utf-8"/><title>目录</title><link rel="stylesheet" type="text/css" href="style/style.css"/></head>\n<body epub:type="frontmatter">\n<nav epub:type="toc" id="toc">\n<h1>目录</h1>\n<ol>${navBody||'<li><a href="text/ch000.xhtml">前言</a></li>'}</ol>\n</nav>\n</body>\n</html>`;
+    text.file('nav.xhtml',navXhtml);
+    // content.opf + toc.ncx
+    let manifest='',spine='';const titles=[];
+    State.chapters.forEach((c,i)=>{const fn=_ch2fn[c.id]||(c.role==='nav'?'text/nav.xhtml':c.role==='cover'?'text/cover.xhtml':`text/ch${String(i).padStart(3,'0')}.xhtml`);titles.push({id:fn,title:c.title});});
+    titles.forEach((t,ii)=>{const id=t.id.replace(/\.xhtml$/,'')||('id'+ii);manifest+=`<item id="${esc(id)}" href="${esc(t.id)}" media-type="application/xhtml+xml"/>`;spine+=`<itemref idref="${esc(id)}"/>`;});
+    const opf=`<?xml version="1.0" encoding="UTF-8"?>\n<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">\n<metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>${esc(State.meta.title||'未命名')}</dc:title><dc:creator>${esc(State.meta.author||'')}</dc:creator><dc:language>zh-CN</dc:language><meta property="dcterms:modified">${new Date().toISOString().slice(0,10)}</meta></metadata>\n<manifest>${manifest}<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/><item id="style" href="style/style.css" media-type="text/css"/></manifest>\n<spine toc="ncx">${spine}</spine>\n</package>`;
+    oebps.file('content.opf',opf);
+    let ncxNav='';titles.forEach((t,ii)=>{ncxNav+=`<navPoint id="nav${ii}" playOrder="${ii+1}"><navLabel><text>${esc(t.title)}</text></navLabel><content src="${esc(t.id)}"/></navPoint>`;});
+    const ncx=`<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN" "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd"><ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><head><meta name="dtb:uid" content="bookid"/><meta name="dtb:depth" content="1"/></head><docTitle><text>${esc(State.meta.title||'未命名')}</text></docTitle><navMap>${ncxNav}</navMap></ncx>`;
+    oebps.file('toc.ncx',ncx);
+    const blob=await zip.generateAsync({type:'blob',mimeType:'application/epub+zip',compression:'DEFLATE'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fileName.endsWith('.epub')?fileName:(fileName+'.epub');a.click();URL.revokeObjectURL(a.href);
+    toast('导出成功：'+a.download);
+  }catch(err){console.error(err);toast('导出失败：'+(err.message||err));}
+}
 /* ============ 元数据 ============ */
 $('#metaTitle').addEventListener('input',()=>{State.meta.title=$('#metaTitle').value;markDirty();});
 $('#metaAuthor').addEventListener('input',()=>{State.meta.author=$('#metaAuthor').value;markDirty();});
-/* ============ 草稿恢复 ============ */
+/* ============ 草稿恢复（V5 修复） ============ */
 function markDirty(){if(!State.importing)State.dirty=true;}
-function tryRestoreDraft(){try{const raw=localStorage.getItem(State.draftKey);if(!raw)return;const data=JSON.parse(raw);if(!data||!Array.isArray(data.chapters)||data.chapters.length===0)return;const bar=$('#draftBar');bar.classList.add('show');const restore=()=>{State.chapters=data.chapters;State.toc=data.toc||State.chapters.map(c=>({id:c.id,label:c.title,boundChId:c.id}));State.meta=data.meta||{title:'',author:''};$('#metaTitle').value=State.meta.title||'';$('#metaAuthor').value=State.meta.author||'';selectChapter(State.chapters[0]?.id||null);renderChapters();renderToc();bar.classList.remove('show');toast('已恢复上次草稿');};const discard=()=>{localStorage.removeItem(State.draftKey);bar.classList.remove('show');};$('#draftRestore').addEventListener('click',restore,{once:true});$('#draftDiscard').addEventListener('click',discard,{once:true});}catch(e){}}
-let saveTimer=null;function autoSaveDraft(){if(State.importing)return;clearTimeout(saveTimer);saveTimer=setTimeout(()=>{if(!State.dirty)return;if(State.cur)State.chapters.find(x=>x.id===State.cur).html=$('#editor').innerHTML;try{localStorage.setItem(State.draftKey,JSON.stringify({chapters:State.chapters,toc:State.toc,meta:State.meta}));}catch(e){}},900);}
-['input','change','keyup'].forEach(ev=>document.addEventListener(ev,()=>{if(State.importing)return;markDirty();autoSaveDraft();}));
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&!State.importing&&State.dirty){if(State.cur)State.chapters.find(x=>x.id===State.cur).html=$('#editor').innerHTML;try{localStorage.setItem(State.draftKey,JSON.stringify({chapters:State.chapters,toc:State.toc,meta:State.meta}));}catch(e){}}});
+function tryRestoreDraft(){
+  try{
+    const raw=localStorage.getItem(State.draftKey);
+    if(!raw)return;
+    const data=JSON.parse(raw);
+    if(!data||!Array.isArray(data.chapters)||data.chapters.length===0)return;
+    const bar=$('#draftBar');
+    bar.classList.add('show');
+    const restore=()=>{
+      State.chapters=data.chapters;
+      State.toc=data.toc||State.chapters.map(c=>({id:c.id,label:c.title,boundChId:c.id}));
+      State.meta=data.meta||{title:'',author:''};
+      $('#metaTitle').value=State.meta.title||'';
+      $('#metaAuthor').value=State.meta.author||'';
+      // 恢复历史栈
+      State.chapters.forEach(c=>{if(!State.hist[c.id])State.hist[c.id]=[];});
+      selectChapter(State.chapters[0]?.id||null);
+      renderChapters();renderToc();
+      bar.classList.remove('show');
+      toast('已恢复上次草稿');
+    };
+    const discard=()=>{localStorage.removeItem(State.draftKey);bar.classList.remove('show');};
+    $('#draftRestore').addEventListener('click',restore,{once:true});
+    $('#draftDiscard').addEventListener('click',discard,{once:true});
+  }catch(e){console.error('Draft restore error:',e);}
+}
+let saveTimer=null;
+function autoSaveDraft(){
+  if(State.importing)return;
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    if(!State.dirty)return;
+    if(State.cur)State.chapters.find(x=>x.id===State.cur).html=$('#editor').innerHTML;
+    try{localStorage.setItem(State.draftKey,JSON.stringify({chapters:State.chapters,toc:State.toc,meta:State.meta}));State.dirty=false;}catch(e){}
+  },900);
+}
+['input','change'].forEach(ev=>document.addEventListener(ev,()=>{if(State.importing)return;markDirty();autoSaveDraft();}));
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'&&!State.importing&&State.dirty){
+    if(State.cur)State.chapters.find(x=>x.id===State.cur).html=$('#editor').innerHTML;
+    try{localStorage.setItem(State.draftKey,JSON.stringify({chapters:State.chapters,toc:State.toc,meta:State.meta}));State.dirty=false;}catch(e){}
+  }
+});
 /* ============ 键盘快捷键 ============ */
-document.addEventListener('keydown',(e)=>{if(e.target===$('#editor')||$('#editor').contains(e.target)){if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){e.preventDefault();doUndoRedo(-1);}else if((e.ctrlKey||e.metaKey)&&(e.key.toLowerCase()==='y'||(e.shiftKey&&e.key.toLowerCase()==='z'))){e.preventDefault();doUndoRedo(1);}}if(e.key==='Escape'){closeDrawer();closeBotSheet();$('#modalMask').removeClass('show');}});
+document.addEventListener('keydown',(e)=>{
+  if(e.target===$('#editor')||$('#editor').contains(e.target)){
+    if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){e.preventDefault();doUndoRedo(-1);}
+    else if((e.ctrlKey||e.metaKey)&&(e.key.toLowerCase()==='y'||(e.shiftKey&&e.key.toLowerCase()==='z'))){e.preventDefault();doUndoRedo(1);}
+  }
+  if(e.key==='Escape'){closeDrawer();closeBotSheet();$('#modalMask').removeClass('show');}
+});
 /* ============ 全局错误兜底 ============ */
 window.addEventListener('error',(e)=>{console.error('Global error:',e.error||e.message);if(/JSZip/.test(e.message||''))toast('JSZip 库加载失败，导入/导出将不可用');});
 /* ============ 启动 ============ */
-function init(){if(typeof JSZip!=='function'){toast('JSZip 库加载失败，导入/导出将不可用');console.error('JSZip not defined at init');}tryRestoreDraft();renderChapters();renderToc();}
+function init(){
+  if(typeof JSZip!=='function'){toast('JSZip 库加载失败，导入/导出将不可用');console.error('JSZip not defined at init');}
+  // 先尝试恢复草稿；若无草稿，渲染空状态
+  tryRestoreDraft();
+  if(State.chapters.length===0){renderChapters();renderToc();}
+}
 init();
 </script>
 </body>
