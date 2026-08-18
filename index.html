@@ -93,12 +93,19 @@ body {
 #batch-bar button:hover { background: #fee2e2; }
 #batch-bar button.primary { background: var(--danger); color: #fff; border-color: var(--danger); }
 #batch-bar button.primary:hover { background: var(--danger-hover); border-color: var(--danger-hover); }
+#batch-bar button:disabled { opacity: .4; cursor: not-allowed; }
+#btn-batch-mode.active { background: var(--danger); color: #fff; border-color: var(--danger); }
+/* Batch mode: highlight sidebar for selection */
+#sidebar.batch-mode .chapter-item { cursor: default; }
+#sidebar.batch-mode .chapter-item:hover { background: var(--card); }
+#sidebar.batch-mode .ch-check { width: 18px; height: 18px; }
+#sidebar:not(.batch-mode) .ch-check { display: none; }
 /* Checkbox on chapter items */
 #sidebar .chapter-item { position: relative; padding-left: 32px; }
 #sidebar .chapter-item .ch-check { position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
   width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
 #sidebar .chapter-item.selected-batch { background: #fef2f2; border-color: #fca5a5; }
-#editor-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+#editor-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; min-height: 0; }
 #editor-header {
   display: none; align-items: center; gap: 8px; padding: 8px 12px;
   background: var(--card); border-bottom: 1px solid var(--border);
@@ -113,12 +120,12 @@ body {
   background: #dbeafe; color: var(--primary);
 }
 #editor-header .ch-type-badge.body { background: #dcfce7; color: var(--success); }
-#editor { flex: 1; padding: 16px 18px 40px 18px; border: none; resize: none; font-size: 16px;
-  font-family: "SF Mono", "Fira Code", "Consolas", monospace; line-height: 1.8;
+#editor { flex: 1; padding: 20px 22px 80px 22px; border: none; resize: none; font-size: 18px;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace; line-height: 2;
   background: var(--card); color: var(--text); overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
 #editor:focus { outline: none; }
 /* Preview editable area */
-#preview-edit { flex: 1; overflow-y: auto; padding: 18px 18px 48px 18px; display: none; background: #fff; }
+#preview-edit { flex: 1; overflow-y: auto; padding: 22px 22px 100px 22px; display: none; background: #fff; }
 #preview-edit.show { display: block; }
 #preview-edit .pv-block { margin: 14px 0; border-radius: 8px; padding: 14px 16px; }
 #preview-edit .pv-block .pv-label { font-size: 12px; font-weight: 700; margin-bottom: 8px; letter-spacing: .5px; }
@@ -128,7 +135,7 @@ body {
 #preview-edit .pv-ta .pv-label { color: #16a34a; }
 #preview-edit .pv-plain { background: #f8fafc; border: 1px solid var(--border); }
 #preview-edit .pv-plain .pv-label { color: var(--text-secondary); }
-#preview-edit [contenteditable] { outline: none; min-height: 1.5em; white-space: pre-wrap; word-break: break-word; line-height: 1.9; font-size: 16px; color: #222; }
+#preview-edit [contenteditable] { outline: none; min-height: 1.5em; white-space: pre-wrap; word-break: break-word; line-height: 2; font-size: 18px; color: #222; }
 #empty-editor { flex: 1; display: flex; align-items: center; justify-content: center;
   color: var(--text-secondary); font-size: 14px; flex-direction: column; gap: 8px; }
 #empty-editor .icon { font-size: 48px; opacity: .3; }
@@ -188,6 +195,7 @@ body {
     <button id="btn-add" disabled>➕ 新增章节</button>
     <button id="btn-rename" disabled>✏️ 重命名</button>
     <button id="btn-delete" disabled class="danger">🗑️ 删除</button>
+    <button id="btn-batch-mode" disabled title="进入批量选择模式">☑️ 批量删除</button>
   </div>
   <div id="status">请打开一个 EPUB 文件开始分章…</div>
   <div id="main">
@@ -195,7 +203,9 @@ body {
     <div id="batch-bar">
       <span id="batch-count">已选 0 项</span>
       <span class="spacer"></span>
-      <button id="batch-cancel">取消选择</button>
+      <button id="batch-select-all">全选</button>
+      <button id="batch-invert">反选</button>
+      <button id="batch-cancel">取消</button>
       <button id="batch-delete" class="primary">🗑️ 批量删除</button>
     </div>
     <div id="sidebar">
@@ -271,6 +281,9 @@ const batchBar = $('batch-bar');
 const batchCount = $('batch-count');
 const batchCancel = $('batch-cancel');
 const batchDelete = $('batch-delete');
+const batchSelectAll = $('batch-select-all');
+const batchInvert = $('batch-invert');
+const btnBatchMode = $('btn-batch-mode');
 const statusEl = $('status');
 const modalOverlay = $('modal-overlay');
 const modalInput = $('modal-input');
@@ -347,6 +360,7 @@ $('file-input').addEventListener('change', async e => {
     btnAdd.disabled = false;
     btnSrc.disabled = false;
     btnPreview.disabled = false;
+    btnBatchMode.disabled = false;
     renderSidebar();
     setStatus(`已加载：${state.meta.title||file.name}（${state.chapters.length} 个章节）`);
     toast(`分章完成，共 ${state.chapters.length} 章`);
@@ -522,6 +536,7 @@ function renderSidebar() {
     return;
   }
   sidebar.innerHTML = '';
+  sidebar.classList.toggle('batch-mode', !!state.batchMode);
   let bodyCount = 0;
   state.chapters.forEach(ch => {
     const div = document.createElement('div');
@@ -552,6 +567,7 @@ function formatWordCount(html) {
   tmp.innerHTML = html || '';
   const text = (tmp.textContent || tmp.innerText || '').trim();
   const len = text.length;
+  if (len >= 10000) return (len/10000).toFixed(1) + '万字';
   if (len >= 1000) return (len/1000).toFixed(1) + 'k字';
   return len + '字';
 }
@@ -582,7 +598,42 @@ function updateBatchBar() {
   } else {
     batchBar.classList.remove('show');
   }
+  // Enable/disable select-all/invert based on batch mode
+  batchSelectAll.disabled = !state.batchMode;
+  batchInvert.disabled = !state.batchMode;
 }
+
+// Batch mode toggle
+state.batchMode = false;
+btnBatchMode.addEventListener('click', () => {
+  state.batchMode = !state.batchMode;
+  btnBatchMode.classList.toggle('active', state.batchMode);
+  sidebar.classList.toggle('batch-mode', state.batchMode);
+  if (!state.batchMode) {
+    // Exiting batch mode -> clear selection
+    state.selectedForBatch = new Set();
+    renderSidebar();
+  }
+  toast(state.batchMode ? '已进入批量删除模式（点击章节前方的复选框选择）' : '已退出批量删除模式');
+});
+
+// Select all visible chapters
+batchSelectAll.addEventListener('click', () => {
+  if (!state.batchMode) return;
+  state.selectedForBatch = new Set(state.chapters.map(c => c.id));
+  renderSidebar();
+});
+
+// Invert selection
+batchInvert.addEventListener('click', () => {
+  if (!state.batchMode) return;
+  const newSel = new Set();
+  state.chapters.forEach(c => {
+    if (!state.selectedForBatch.has(c.id)) newSel.add(c.id);
+  });
+  state.selectedForBatch = newSel;
+  renderSidebar();
+});
 
 function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function byteLen(s) { return new Blob([s]).size; }
