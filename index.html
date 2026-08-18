@@ -80,6 +80,8 @@ body {
 #sidebar .chapter-item.active { background: var(--selected); border-color: var(--selected-border); }
 #sidebar .chapter-item .ch-title { font-weight: 600; font-size: 13px; }
 #sidebar .chapter-item .ch-meta { font-size: 11px; color: var(--text-secondary); }
+#sidebar .chapter-item .ch-wordcount { font-size: 11px; color: var(--primary); font-weight: 600;
+  background: #eff6ff; padding: 1px 6px; border-radius: 8px; align-self: flex-start; }
 #sidebar .chapter-item.special { border-left: 3px solid var(--primary); }
 #sidebar .chapter-item.body-chapter { border-left: 3px solid var(--success); }
 #empty-sidebar { text-align: center; color: var(--text-secondary); padding: 40px 16px; font-size: 13px; }
@@ -120,12 +122,12 @@ body {
   background: #dbeafe; color: var(--primary);
 }
 #editor-header .ch-type-badge.body { background: #dcfce7; color: var(--success); }
-#editor { flex: 1; padding: 20px 22px 80px 22px; border: none; resize: none; font-size: 18px;
-  font-family: "SF Mono", "Fira Code", "Consolas", monospace; line-height: 2;
+#editor { flex: 1; padding: 24px 26px 120px 26px; border: none; resize: none; font-size: 20px;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace; line-height: 2.1;
   background: var(--card); color: var(--text); overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
 #editor:focus { outline: none; }
 /* Preview editable area */
-#preview-edit { flex: 1; overflow-y: auto; padding: 22px 22px 100px 22px; display: none; background: #fff; }
+#preview-edit { flex: 1; overflow-y: auto; padding: 24px 26px 140px 26px; display: none; background: #fff; }
 #preview-edit.show { display: block; }
 #preview-edit .pv-block { margin: 14px 0; border-radius: 8px; padding: 14px 16px; }
 #preview-edit .pv-block .pv-label { font-size: 12px; font-weight: 700; margin-bottom: 8px; letter-spacing: .5px; }
@@ -135,7 +137,7 @@ body {
 #preview-edit .pv-ta .pv-label { color: #16a34a; }
 #preview-edit .pv-plain { background: #f8fafc; border: 1px solid var(--border); }
 #preview-edit .pv-plain .pv-label { color: var(--text-secondary); }
-#preview-edit [contenteditable] { outline: none; min-height: 1.5em; white-space: pre-wrap; word-break: break-word; line-height: 2; font-size: 18px; color: #222; }
+#preview-edit [contenteditable] { outline: none; min-height: 1.5em; white-space: pre-wrap; word-break: break-word; line-height: 2.1; font-size: 20px; color: #222; }
 #empty-editor { flex: 1; display: flex; align-items: center; justify-content: center;
   color: var(--text-secondary); font-size: 14px; flex-direction: column; gap: 8px; }
 #empty-editor .icon { font-size: 48px; opacity: .3; }
@@ -549,7 +551,8 @@ function renderSidebar() {
     const wordInfo = formatWordCount(ch.content);
     div.innerHTML = `<input type="checkbox" class="ch-check" ${checked} aria-label="选择章节">
       <span class="ch-title">${escapeHtml(ch.name)}</span>
-      <span class="ch-meta">${isBody?('正文 · 第'+bodyCount+'轮次'):'特殊章节'} · ${wordInfo}</span>`;
+      <span class="ch-meta">${isBody?('正文 · 第'+bodyCount+'轮次'):'特殊章节'}</span>
+      <span class="ch-wordcount">${wordInfo}</span>`;
     // Checkbox click: toggle batch selection (don't select chapter)
     div.querySelector('.ch-check').addEventListener('click', e => {
       e.stopPropagation();
