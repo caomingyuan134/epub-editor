@@ -453,34 +453,31 @@
 
     <div id="status-bar">
         <span id="status-left">就绪</span>
-        <span id="status-right">v3.2</span>
+        <span id="status-right">v3.3</span>
     </div>
 
     <script>
         (function() {
             'use strict';
 
-            // ---------- 状态 ----------
             const state = {
-                chapters: [], // { id, name, filename, content, isSpecial }
+                chapters: [],
                 currentIndex: 0,
                 mode: 'preview',
-                zipData: null, // 原始 ZIP 数据（用于导出时复制资源）
+                zipData: null,
                 isDirty: false,
                 undoStack: [],
                 redoStack: [],
                 maxUndo: 30,
-                // EPUB 元数据
                 metadata: {
                     title: 'Edited EPUB',
                     creator: 'Unknown',
                     language: 'zh-CN',
-                    uid: 'urn:uuid:' + crypto.randomUUID ? crypto.randomUUID() : '12345678-1234-1234-1234-123456789abc',
+                    uid: 'urn:uuid:' + (crypto.randomUUID ? crypto.randomUUID() :
+                        '12345678-1234-1234-1234-123456789abc'),
                     description: '',
                 },
-                // 原始文件列表（用于复制资源）
                 originalFiles: {},
-                // 是否使用 text/ 目录
                 hasTextDir: true,
             };
 
@@ -524,7 +521,6 @@
                 return 'ch' + (index - 1);
             }
 
-            // ---------- 撤销 ----------
             function pushUndo() {
                 if (!state.chapters.length) return;
                 const snapshot = JSON.stringify(state.chapters.map(c => ({
@@ -608,7 +604,6 @@
                 redoBtn.disabled = state.redoStack.length === 0;
             }
 
-            // ---------- 核心处理 ----------
             function countMeDivs(content) {
                 const matches = content.match(/<div\s+class="me"/gi);
                 return matches ? matches.length : 0;
@@ -680,13 +675,11 @@
         </html>`;
             }
 
-            // ---------- 解析 EPUB ----------
             async function loadEpub(zipData) {
                 const zip = await JSZip.loadAsync(zipData);
                 state.zipData = zip;
                 state.originalFiles = {};
 
-                // 读取所有文件
                 const files = Object.keys(zip.files);
                 for (const fname of files) {
                     const file = zip.files[fname];
@@ -695,16 +688,13 @@
                             const content = await file.async('string');
                             state.originalFiles[fname] = content;
                         } catch (e) {
-                            // 二进制文件，跳过
                             console.warn('跳过文件:', fname, e);
                         }
                     }
                 }
 
-                // ---- 读取 content.opf 获取元数据 ----
                 const opfContent = state.originalFiles['OEBPS/content.opf'] || state.originalFiles['content.opf'];
                 if (opfContent) {
-                    // 提取书名、作者、uid
                     const titleMatch = opfContent.match(/<dc:title>([^<]*)<\/dc:title>/);
                     if (titleMatch) state.metadata.title = titleMatch[1];
                     const creatorMatch = opfContent.match(/<dc:creator>([^<]*)<\/dc:creator>/);
@@ -719,10 +709,9 @@
 
                 const chapters = [];
 
-                // ---- 1. 封面：从 text/cover.xhtml 读取 ----
-                let coverContent = state.originalFiles['OEBPS/text/cover.xhtml'] || state.originalFiles['text/cover.xhtml'];
+                let coverContent = state.originalFiles['OEBPS/text/cover.xhtml'] || state.originalFiles['text/cover
+                    .xhtml'];
                 if (!coverContent) {
-                    // 尝试从其他位置找
                     for (const fname of Object.keys(state.originalFiles)) {
                         if (fname.endsWith('cover.xhtml')) {
                             coverContent = state.originalFiles[fname];
@@ -741,8 +730,8 @@
                     isSpecial: true,
                 });
 
-                // ---- 2. 开场白：从 text/ch000.xhtml 读取 ----
-                let prologueContent = state.originalFiles['OEBPS/text/ch000.xhtml'] || state.originalFiles['text/ch000.xhtml'];
+                let prologueContent = state.originalFiles['OEBPS/text/ch000.xhtml'] || state.originalFiles['text/ch000
+                    .xhtml'];
                 if (!prologueContent) {
                     for (const fname of Object.keys(state.originalFiles)) {
                         if (fname.endsWith('ch000.xhtml')) {
@@ -762,8 +751,6 @@
                     isSpecial: true,
                 });
 
-                // ---- 3. 轮次文件：从 text/ch001.xhtml 及以后读取 ----
-                // 收集所有 chXXX.xhtml 文件
                 const roundFiles = [];
                 for (const fname of Object.keys(state.originalFiles)) {
                     const base = fname.split('/').pop();
@@ -773,7 +760,6 @@
                 }
                 roundFiles.sort();
 
-                // 如果没有找到，尝试从根目录找
                 if (roundFiles.length === 0) {
                     for (const fname of Object.keys(state.originalFiles)) {
                         const base = fname.split('/').pop();
@@ -789,12 +775,10 @@
                     const content = state.originalFiles[fname];
                     if (!content) continue;
 
-                    // 提取 head
                     const headHtml = extractHeadHtml(content);
                     const meCount = countMeDivs(content);
 
                     if (meCount <= 1) {
-                        // 只有一个 me，直接作为一章
                         const chIdx = chapters.length;
                         const chName = getChapterDisplayName(chIdx);
                         const chFilename = getChapterFilename(chIdx);
@@ -808,7 +792,6 @@
                             isSpecial: false,
                         });
                     } else {
-                        // 多个 me，按轮次切割
                         for (let i = 0; i < meCount; i++) {
                             const chIdx = chapters.length;
                             const chName = getChapterDisplayName(chIdx);
@@ -826,7 +809,6 @@
                     }
                 }
 
-                // 如果仍然没有轮次，生成一个示例
                 if (chapters.length <= 2) {
                     const chIdx = chapters.length;
                     const chName = getChapterDisplayName(chIdx);
@@ -859,7 +841,6 @@
                 statusRight.textContent = `文件: ${Object.keys(state.originalFiles).length} 个`;
             }
 
-            // ---------- 渲染 ----------
             function renderChapterList() {
                 const list = chapterList;
                 list.innerHTML = '';
@@ -965,7 +946,6 @@
                 counter.textContent = `${idx + 1} / ${state.chapters.length}`;
             }
 
-            // ---------- 章节管理 ----------
             function addChapter() {
                 if (!state.chapters.length) return;
                 saveCurrentContent();
@@ -1093,14 +1073,13 @@
                     saveCurrentContent();
                 }
 
-                // 创建全新的 ZIP
                 const newZip = new JSZip();
 
-                // 1. 添加 mimetype（必须是第一个文件，且不压缩）
+                // 1. mimetype（第一个文件，不压缩）
                 const mimetypeBlob = new Blob(['application/epub+zip'], { type: 'application/octet-stream' });
                 newZip.file('mimetype', mimetypeBlob, { compression: 'STORE' });
 
-                // 2. 添加 META-INF/container.xml
+                // 2. META-INF/container.xml
                 const containerXml = `<?xml version="1.0" encoding="UTF-8"?>
         <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
           <rootfiles>
@@ -1109,40 +1088,50 @@
         </container>`;
                 newZip.file('META-INF/container.xml', containerXml);
 
-                // 3. 从原始 ZIP 复制资源文件（style.css、images/ 等）
-                // 但跳过我们已经会重新生成的文件
+                // 3. 复制资源文件（style.css、images/）
                 const skipFiles = [
                     'mimetype',
                     'META-INF/container.xml',
                     'OEBPS/content.opf',
                     'OEBPS/nav.xhtml',
                     'OEBPS/toc.ncx',
-                    'OEBPS/style.css',
                     'OEBPS/text/cover.xhtml',
                     'OEBPS/text/ch000.xhtml',
                 ];
-                // 跳过所有 chXXX.xhtml
                 const chapterPattern = /^OEBPS\/text\/ch\d{3}\.xhtml$/;
 
+                // 先把 style.css 单独拿出来，确保复制
+                let styleCssContent = state.originalFiles['OEBPS/style.css'] || state.originalFiles['style.css'];
+                if (styleCssContent) {
+                    newZip.file('OEBPS/style.css', styleCssContent);
+                } else {
+                    // 如果没找到 style.css，生成一个默认的
+                    const defaultCss = `@charset "utf-8";
+        body { font-family: serif; line-height: 1.85; margin: 0 6%; text-align: justify; -webkit-hyphens: none; hyphens: none; }
+        h1 { font-size: 1.35em; font-weight: normal; line-height: 1.5; margin: 2.2em 0 .3em; text-align: left; }
+        .meta { font-size: .78em; color: #777; margin: 0 0 2.4em; padding-bottom: .8em; border-bottom: 1px solid #ddd; }
+        .note { font-size: .82em; color: #777; margin: 0 0 2em; }
+        .who { font-size: .72em; color: #999; letter-spacing: .12em; margin: 1.8em 0 .35em; }
+        p { margin: 0 0 .85em; text-indent: 0; }
+        .me { color: #555; font-size: .93em; border-left: 3px solid #ddd; padding-left: .9em; margin-left: 0; }
+        .me .who { color: #a06a20; }`;
+                    newZip.file('OEBPS/style.css', defaultCss);
+                }
+
+                // 复制其他资源文件（images/ 等）
                 for (const fname of Object.keys(state.originalFiles)) {
                     const base = fname.split('/').pop();
-                    // 跳过我们重新生成的文件
                     if (skipFiles.includes(fname)) continue;
                     if (chapterPattern.test(fname)) continue;
-                    if (fname === 'OEBPS/style.css') {
-                        // style.css 我们复制过去
-                        newZip.file('OEBPS/style.css', state.originalFiles[fname]);
-                        continue;
-                    }
-                    // 复制其他文件（图片等）
+                    if (fname === 'OEBPS/style.css') continue; // 已经处理了
+                    if (fname === 'style.css') continue; // 已经处理了
+
                     try {
-                        // 如果是二进制文件，需要以 blob 形式读取
                         const file = state.zipData.files[fname];
                         if (file) {
                             const content = await file.async('blob');
                             newZip.file(fname, content);
                         } else {
-                            // 如果从原 zip 读不到，可能是字符串内容
                             const content = state.originalFiles[fname];
                             if (content) {
                                 newZip.file(fname, content);
@@ -1153,26 +1142,27 @@
                     }
                 }
 
-                // 4. 添加编辑后的章节文件到 OEBPS/text/
+                // 4. 添加编辑后的章节文件
                 for (const ch of state.chapters) {
                     const path = 'OEBPS/text/' + ch.filename;
                     newZip.file(path, ch.content);
                 }
 
-                // 5. 生成 content.opf
+                // 5. content.opf
                 const opfContent = generateOpf();
                 newZip.file('OEBPS/content.opf', opfContent);
 
-                // 6. 生成 nav.xhtml
+                // 6. nav.xhtml
                 const navContent = generateNav();
                 newZip.file('OEBPS/nav.xhtml', navContent);
 
-                // 7. 生成 toc.ncx
+                // 7. toc.ncx
                 const tocContent = generateToc();
                 newZip.file('OEBPS/toc.ncx', tocContent);
 
-                // 8. 导出
-                const blob = await newZip.generateAsync({ type: 'blob' });
+                // 8. 导出 - 明确指定 MIME 类型
+                const blob = await newZip.generateAsync({ type: 'blob' }, { mimeType: 'application/epub+zip' });
+                // 确保文件后缀是 .epub
                 saveAs(blob, 'edited.epub');
                 statusLeft.textContent = '✅ 导出成功！';
                 state.isDirty = false;
@@ -1183,16 +1173,13 @@
                 let manifestItems = '';
                 let spineItems = '';
 
-                // 封面
                 manifestItems += `<item id="cover-img" href="images/cover.png" media-type="image/png" properties="cover-image"/>\n`;
                 manifestItems += `<item id="cover" href="text/cover.xhtml" media-type="application/xhtml+xml"/>\n`;
                 spineItems += `<itemref idref="cover"/>\n`;
 
-                // 开场白
                 manifestItems += `<item id="c1" href="text/ch000.xhtml" media-type="application/xhtml+xml"/>\n`;
                 spineItems += `<itemref idref="c1"/>\n`;
 
-                // 正文章节
                 let chapterIndex = 2;
                 for (let i = 2; i < state.chapters.length; i++) {
                     const ch = state.chapters[i];
@@ -1202,13 +1189,9 @@
                     chapterIndex++;
                 }
 
-                // 导航
                 manifestItems += `<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>\n`;
                 manifestItems += `<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>\n`;
                 manifestItems += `<item id="css" href="style.css" media-type="text/css"/>\n`;
-
-                // 如果原始文件有 cover-img 的定义，用原始定义，但我们已经用通用的了
-                // 为了兼容，尽量保留原始定义
 
                 return `<?xml version="1.0" encoding="UTF-8"?>
         <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" xml:lang="${state.metadata.language}">
@@ -1274,7 +1257,6 @@
         </ncx>`;
             }
 
-            // ---------- 模式切换 ----------
             function setMode(mode) {
                 if (state.mode === mode) return;
                 if (state.mode === 'source') {
@@ -1411,7 +1393,7 @@
                 }
             });
 
-            console.log('EPUB 分章编辑器 v3.2 已加载');
+            console.log('EPUB 分章编辑器 v3.3 已加载');
             statusLeft.textContent = '就绪，请导入 EPUB 文件';
 
             window.__state = state;
