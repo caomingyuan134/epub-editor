@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>EPUB 分章编辑器</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js">
     </script>
@@ -22,13 +22,16 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         #toolbar {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px 20px;
+            gap: 8px;
+            padding: 10px 14px;
             background: #ffffff;
             border-bottom: 1px solid #e2e8f0;
             flex-shrink: 0;
@@ -37,16 +40,17 @@
             z-index: 10;
         }
         #toolbar .btn {
-            padding: 6px 16px;
+            padding: 5px 12px;
             border: 1px solid #cbd5e1;
             border-radius: 6px;
             background: #f8fafc;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             color: #1e293b;
             transition: all 0.15s;
             white-space: nowrap;
+            touch-action: manipulation;
         }
         #toolbar .btn:hover {
             background: #eef2f6;
@@ -64,6 +68,14 @@
         #toolbar .btn:disabled {
             opacity: 0.4;
             cursor: not-allowed;
+        }
+        #toolbar .btn.danger {
+            background: #fee2e2;
+            border-color: #fca5a5;
+            color: #b91c1c;
+        }
+        #toolbar .btn.danger:hover {
+            background: #fecaca;
         }
         #toolbar .spacer {
             flex: 1;
@@ -87,17 +99,29 @@
         #toolbar .chapter-nav {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 13px;
+            gap: 4px;
+            font-size: 12px;
         }
         #toolbar .chapter-nav .btn {
-            padding: 4px 12px;
+            padding: 3px 10px;
         }
         #toolbar .chapter-nav span {
-            min-width: 80px;
+            min-width: 60px;
             text-align: center;
+            font-size: 12px;
+        }
+        #toolbar .draft-btns {
+            display: flex;
+            gap: 4px;
+        }
+        #toolbar .draft-btns .btn {
+            font-size: 11px;
+            padding: 4px 10px;
         }
         #file-input {
+            display: none;
+        }
+        #draft-input {
             display: none;
         }
 
@@ -108,7 +132,7 @@
         }
 
         #sidebar {
-            width: 260px;
+            width: 240px;
             background: #ffffff;
             border-right: 1px solid #e2e8f0;
             display: flex;
@@ -116,6 +140,7 @@
             flex-shrink: 0;
             transition: width 0.25s, margin 0.25s;
             overflow: hidden;
+            position: relative;
         }
         #sidebar.collapsed {
             width: 0;
@@ -126,12 +151,12 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 16px;
+            padding: 10px 14px;
             border-bottom: 1px solid #e2e8f0;
             flex-shrink: 0;
         }
         #sidebar-header h3 {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             color: #475569;
         }
@@ -139,10 +164,11 @@
             background: none;
             border: none;
             cursor: pointer;
-            font-size: 18px;
+            font-size: 16px;
             color: #64748b;
             padding: 4px 8px;
             border-radius: 4px;
+            touch-action: manipulation;
         }
         #sidebar-header .btn-icon:hover {
             background: #f1f5f9;
@@ -150,20 +176,23 @@
         #chapter-list {
             flex: 1;
             overflow-y: auto;
-            padding: 8px 0;
+            padding: 4px 0;
+            -webkit-overflow-scrolling: touch;
         }
         #chapter-list .chapter-item {
             display: flex;
             align-items: center;
-            padding: 6px 16px;
+            padding: 8px 14px;
             cursor: pointer;
             font-size: 13px;
             border-left: 3px solid transparent;
             transition: background 0.1s;
             gap: 8px;
+            touch-action: manipulation;
+            min-height: 40px;
         }
-        #chapter-list .chapter-item:hover {
-            background: #f1f5f9;
+        #chapter-list .chapter-item:active {
+            background: #eef2f6;
         }
         #chapter-list .chapter-item.active {
             background: #eef2ff;
@@ -172,10 +201,15 @@
         }
         #chapter-list .chapter-item .ch-check {
             flex-shrink: 0;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             cursor: pointer;
             accent-color: #4f46e5;
+            touch-action: manipulation;
+            display: none;
+        }
+        #chapter-list .chapter-item .ch-check.show {
+            display: block;
         }
         #chapter-list .chapter-item .ch-name {
             flex: 1;
@@ -184,18 +218,42 @@
             white-space: nowrap;
         }
         #chapter-list .chapter-item .ch-badge {
-            font-size: 10px;
+            font-size: 9px;
             background: #e2e8f0;
             color: #475569;
             padding: 1px 8px;
             border-radius: 10px;
             flex-shrink: 0;
         }
+        #chapter-list .chapter-item.selected {
+            background: #dbeafe;
+            border-left-color: #3b82f6;
+        }
+        #chapter-list .chapter-item .ch-index {
+            font-size: 11px;
+            color: #94a3b8;
+            min-width: 24px;
+            flex-shrink: 0;
+        }
+
+        .selection-hint {
+            font-size: 12px;
+            color: #3b82f6;
+            padding: 6px 14px;
+            background: #eff6ff;
+            border-bottom: 1px solid #bfdbfe;
+            display: none;
+            flex-shrink: 0;
+        }
+        .selection-hint.show {
+            display: block;
+        }
+
         #sidebar-actions {
-            padding: 10px 16px;
+            padding: 8px 14px;
             border-top: 1px solid #e2e8f0;
             display: flex;
-            gap: 8px;
+            gap: 6px;
             flex-shrink: 0;
             flex-wrap: wrap;
         }
@@ -207,6 +265,7 @@
             background: #f8fafc;
             cursor: pointer;
             color: #1e293b;
+            touch-action: manipulation;
         }
         #sidebar-actions .btn:hover {
             background: #eef2f6;
@@ -218,6 +277,10 @@
         }
         #sidebar-actions .btn.danger:hover {
             background: #fecaca;
+        }
+        #sidebar-actions .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
         }
 
         #editor-area {
@@ -231,13 +294,13 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 20px;
+            padding: 8px 16px;
             background: #ffffff;
             border-bottom: 1px solid #e2e8f0;
             flex-shrink: 0;
         }
         #editor-top-bar .chapter-title {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             color: #0f172a;
         }
@@ -249,6 +312,7 @@
             color: #64748b;
             padding: 4px 8px;
             border-radius: 4px;
+            touch-action: manipulation;
         }
         #editor-top-bar .btn-icon:hover {
             background: #f1f5f9;
@@ -256,14 +320,15 @@
         #editor-container {
             flex: 1;
             overflow: auto;
-            padding: 16px 24px;
+            padding: 16px 20px;
             background: #ffffff;
-            margin: 8px 16px 16px 16px;
+            margin: 8px 12px 12px 12px;
             border-radius: 8px;
             border: 1px solid #e2e8f0;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
             font-size: 14px;
             line-height: 1.7;
+            -webkit-overflow-scrolling: touch;
         }
         #editor-container:focus {
             outline: none;
@@ -322,10 +387,10 @@
         #status-bar {
             display: flex;
             justify-content: space-between;
-            padding: 6px 20px;
+            padding: 4px 16px;
             background: #f1f5f9;
             border-top: 1px solid #e2e8f0;
-            font-size: 12px;
+            font-size: 11px;
             color: #64748b;
             flex-shrink: 0;
         }
@@ -333,38 +398,55 @@
         #toggle-sidebar-btn {
             background: none;
             border: none;
-            font-size: 22px;
+            font-size: 20px;
             cursor: pointer;
             color: #475569;
             padding: 4px 8px;
             border-radius: 4px;
             line-height: 1;
+            touch-action: manipulation;
         }
         #toggle-sidebar-btn:hover {
             background: #f1f5f9;
         }
 
-        @media (max-width: 720px) {
+        @media (max-width: 640px) {
             #sidebar {
                 width: 200px;
             }
             #toolbar {
-                padding: 8px 12px;
-                gap: 6px;
+                padding: 6px 10px;
+                gap: 4px;
             }
             #toolbar .btn {
-                padding: 4px 10px;
-                font-size: 12px;
+                padding: 4px 8px;
+                font-size: 11px;
             }
             #editor-container {
-                padding: 12px 16px;
-                margin: 6px 8px 8px 8px;
+                padding: 12px 14px;
+                margin: 4px 8px 8px 8px;
+            }
+            #sidebar-header h3 {
+                font-size: 12px;
+            }
+            #chapter-list .chapter-item {
+                padding: 6px 10px;
+                font-size: 12px;
+                min-height: 36px;
+            }
+            #sidebar-actions .btn {
+                font-size: 11px;
+                padding: 3px 10px;
+            }
+            #toolbar .draft-btns .btn {
+                font-size: 10px;
+                padding: 3px 8px;
             }
         }
 
         ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 4px;
+            height: 4px;
         }
         ::-webkit-scrollbar-track {
             background: #f1f5f9;
@@ -399,6 +481,43 @@
             border-radius: 16px;
             border: 3px dashed rgba(255, 255, 255, 0.4);
         }
+
+        /* 长按反馈 */
+        .chapter-item.long-press {
+            background: #dbeafe !important;
+            border-left-color: #3b82f6 !important;
+        }
+        .chapter-item.pressed {
+            transform: scale(0.97);
+            transition: transform 0.05s;
+        }
+
+        .draft-indicator {
+            font-size: 11px;
+            color: #059669;
+            display: none;
+            align-items: center;
+            gap: 4px;
+        }
+        .draft-indicator.show {
+            display: flex;
+        }
+        .draft-indicator .dot {
+            width: 6px;
+            height: 6px;
+            background: #059669;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
     </style>
 </head>
 <body>
@@ -409,33 +528,49 @@
 
     <div id="toolbar">
         <button id="toggle-sidebar-btn" title="切换目录">☰</button>
-        <button class="btn primary" id="upload-btn">📂 导入 EPUB</button>
-        <button class="btn primary" id="export-btn" disabled>💾 导出 EPUB</button>
+        <button class="btn primary" id="upload-btn">📂 导入</button>
+        <button class="btn primary" id="export-btn" disabled>💾 导出</button>
         <span class="spacer"></span>
+
+        <div class="draft-btns">
+            <button class="btn" id="save-draft-btn" title="保存草稿到本地">💾 草稿</button>
+            <button class="btn" id="load-draft-btn" title="从本地加载草稿">📂 恢复</button>
+            <span class="draft-indicator" id="draft-indicator"><span class="dot"></span>已保存</span>
+        </div>
+
         <div class="mode-group">
             <button class="btn active" data-mode="preview" id="mode-preview">预览</button>
             <button class="btn" data-mode="source" id="mode-source">源码</button>
         </div>
+
         <div class="chapter-nav">
             <button class="btn" id="prev-chapter" disabled>◀</button>
-            <span id="chapter-counter">0 / 0</span>
+            <span id="chapter-counter">0/0</span>
             <button class="btn" id="next-chapter" disabled>▶</button>
         </div>
-        <button class="btn" id="undo-btn" disabled>↩ 撤销</button>
-        <button class="btn" id="redo-btn" disabled>↪ 重做</button>
+
+        <button class="btn" id="undo-btn" disabled>↩</button>
+        <button class="btn" id="redo-btn" disabled>↪</button>
+
         <input type="file" id="file-input" accept=".epub" />
+        <input type="file" id="draft-input" accept=".json" />
     </div>
 
     <div id="main">
         <div id="sidebar">
             <div id="sidebar-header">
                 <h3>📑 章节</h3>
-                <button class="btn-icon" id="close-sidebar-btn" title="收起">✕</button>
+                <div>
+                    <button class="btn-icon" id="exit-select-btn" title="退出选择" style="display:none;">✕</button>
+                    <button class="btn-icon" id="close-sidebar-btn" title="收起">◀</button>
+                </div>
             </div>
+            <div class="selection-hint" id="selection-hint">已选中 <span id="selected-count">0</span> 章</div>
             <div id="chapter-list"></div>
             <div id="sidebar-actions">
-                <button class="btn" id="add-chapter-btn">＋ 新增章节</button>
-                <button class="btn danger" id="delete-selected-btn">🗑 删除选中</button>
+                <button class="btn" id="add-chapter-btn">＋ 新增</button>
+                <button class="btn danger" id="delete-selected-btn" disabled>🗑 删除选中</button>
+                <button class="btn" id="select-all-btn" style="font-size:11px;">全选</button>
             </div>
         </div>
         <div id="editor-area">
@@ -453,13 +588,14 @@
 
     <div id="status-bar">
         <span id="status-left">就绪</span>
-        <span id="status-right">v3.3</span>
+        <span id="status-right">v3.4</span>
     </div>
 
     <script>
         (function() {
             'use strict';
 
+            // ---------- 状态 ----------
             const state = {
                 chapters: [],
                 currentIndex: 0,
@@ -473,12 +609,21 @@
                     title: 'Edited EPUB',
                     creator: 'Unknown',
                     language: 'zh-CN',
-                    uid: 'urn:uuid:' + (crypto.randomUUID ? crypto.randomUUID() :
-                        '12345678-1234-1234-1234-123456789abc'),
+                    uid: 'urn:uuid:' + (crypto.randomUUID ? crypto.randomUUID() : '12345678-1234-1234-1234-123456789abc'),
                     description: '',
                 },
                 originalFiles: {},
-                hasTextDir: true,
+                styleCssContent: null,
+                // 选择模式
+                selectMode: false,
+                selectedIndices: [],
+                longPressTimer: null,
+                isLongPress: false,
+                touchStartIndex: null,
+                touchStartTime: 0,
+                // 草稿
+                draftKey: 'epub_editor_draft',
+                hasDraft: false,
             };
 
             const $ = id => document.getElementById(id);
@@ -495,8 +640,16 @@
             const exportBtn = $('export-btn');
             const sidebar = $('sidebar');
             const fileInput = $('file-input');
+            const draftInput = $('draft-input');
             const dropOverlay = $('drop-overlay');
+            const selectionHint = $('selection-hint');
+            const selectedCount = $('selected-count');
+            const deleteBtn = $('delete-selected-btn');
+            const selectAllBtn = $('select-all-btn');
+            const exitSelectBtn = $('exit-select-btn');
+            const draftIndicator = $('draft-indicator');
 
+            // ---------- 工具函数 ----------
             function escapeHtml(str) {
                 const div = document.createElement('div');
                 div.textContent = str;
@@ -521,6 +674,153 @@
                 return 'ch' + (index - 1);
             }
 
+            // 判断是否为特殊章节（封面、开场白）
+            function isSpecialChapter(index) {
+                return index === 0 || index === 1;
+            }
+
+            // ---------- 草稿保存 ----------
+            function saveDraft() {
+                if (!state.chapters.length) return;
+                const data = {
+                    version: '3.4',
+                    timestamp: Date.now(),
+                    chapters: state.chapters.map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        filename: c.filename,
+                        content: c.content,
+                        isSpecial: c.isSpecial || false,
+                    })),
+                    currentIndex: state.currentIndex,
+                    metadata: state.metadata,
+                };
+                try {
+                    localStorage.setItem(state.draftKey, JSON.stringify(data));
+                    state.hasDraft = true;
+                    draftIndicator.classList.add('show');
+                    statusLeft.textContent = '✅ 草稿已保存';
+                    setTimeout(() => {
+                        if (!state.isDirty) {
+                            statusLeft.textContent = state.chapters.length ? `${state.chapters.length} 章` : '就绪';
+                        }
+                    }, 2000);
+                } catch (e) {
+                    console.warn('保存草稿失败:', e);
+                    // localStorage 可能已满
+                    statusLeft.textContent = '⚠️ 草稿保存失败（存储空间不足）';
+                }
+            }
+
+            function loadDraftFromStorage() {
+                try {
+                    const raw = localStorage.getItem(state.draftKey);
+                    if (!raw) return null;
+                    const data = JSON.parse(raw);
+                    // 检查版本兼容性
+                    if (!data.chapters || !data.chapters.length) return null;
+                    return data;
+                } catch (e) {
+                    console.warn('读取草稿失败:', e);
+                    return null;
+                }
+            }
+
+            function restoreDraft(data) {
+                state.chapters = data.chapters.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    filename: c.filename,
+                    content: c.content,
+                    isSpecial: c.isSpecial || false,
+                }));
+                state.currentIndex = data.currentIndex || 0;
+                if (data.metadata) {
+                    state.metadata = data.metadata;
+                }
+                state.isDirty = false;
+                state.undoStack = [];
+                state.redoStack = [];
+                state.zipData = null;
+                state.originalFiles = {};
+                state.styleCssContent = null;
+                exportBtn.disabled = false;
+
+                renderChapterList();
+                renderEditor();
+                updateNavButtons();
+                updateUndoButtons();
+                statusLeft.textContent = `📂 已恢复草稿: ${state.chapters.length} 章`;
+                draftIndicator.classList.add('show');
+                state.hasDraft = true;
+            }
+
+            function clearDraft() {
+                try {
+                    localStorage.removeItem(state.draftKey);
+                    state.hasDraft = false;
+                    draftIndicator.classList.remove('show');
+                } catch (e) { /* ignore */ }
+            }
+
+            // 导出草稿为 JSON 文件
+            function exportDraftFile() {
+                if (!state.chapters.length) {
+                    alert('没有可保存的草稿');
+                    return;
+                }
+                const data = {
+                    version: '3.4',
+                    timestamp: Date.now(),
+                    chapters: state.chapters.map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        filename: c.filename,
+                        content: c.content,
+                        isSpecial: c.isSpecial || false,
+                    })),
+                    currentIndex: state.currentIndex,
+                    metadata: state.metadata,
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                saveAs(blob, 'epub_draft.json');
+                statusLeft.textContent = '✅ 草稿已导出';
+                setTimeout(() => {
+                    if (!state.isDirty) {
+                        statusLeft.textContent = state.chapters.length ? `${state.chapters.length} 章` : '就绪';
+                    }
+                }, 2000);
+            }
+
+            // 导入 JSON 草稿
+            function importDraftFile(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (!data.chapters || !data.chapters.length) {
+                            alert('无效的草稿文件');
+                            return;
+                        }
+                        // 询问是否覆盖当前
+                        if (state.chapters.length > 0) {
+                            if (!confirm('当前已有内容，导入草稿将覆盖。确定继续吗？')) return;
+                        }
+                        restoreDraft(data);
+                        // 同时保存到 localStorage
+                        try {
+                            localStorage.setItem(state.draftKey, JSON.stringify(data));
+                            state.hasDraft = true;
+                            draftIndicator.classList.add('show');
+                        } catch (e) { /* ignore */ }
+                    } catch (err) {
+                        alert('草稿文件格式错误: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            // ---------- 撤销 ----------
             function pushUndo() {
                 if (!state.chapters.length) return;
                 const snapshot = JSON.stringify(state.chapters.map(c => ({
@@ -537,6 +837,8 @@
                 state.redoStack = [];
                 updateUndoButtons();
                 state.isDirty = true;
+                // 自动保存草稿
+                saveDraft();
             }
 
             function undo() {
@@ -567,6 +869,7 @@
                 updateNavButtons();
                 updateUndoButtons();
                 state.isDirty = true;
+                saveDraft();
             }
 
             function redo() {
@@ -597,6 +900,7 @@
                 updateNavButtons();
                 updateUndoButtons();
                 state.isDirty = true;
+                saveDraft();
             }
 
             function updateUndoButtons() {
@@ -604,6 +908,7 @@
                 redoBtn.disabled = state.redoStack.length === 0;
             }
 
+            // ---------- 核心处理 ----------
             function countMeDivs(content) {
                 const matches = content.match(/<div\s+class="me"/gi);
                 return matches ? matches.length : 0;
@@ -618,6 +923,7 @@
                 const match = content.match(/<body>([\s\S]*?)<\/body>/i);
                 if (!match) return '';
                 let body = match[1];
+                // 找到第一个 <div class="me">，去掉之前的内容
                 const meIndex = body.indexOf('<div class="me"');
                 if (meIndex !== -1) {
                     body = body.substring(meIndex);
@@ -643,6 +949,11 @@
             }
 
             function buildFullXhtml(headHtml, bodyContent, title) {
+                // 过滤掉 <h1>```html</h1> 这种残留标记
+                if (bodyContent) {
+                    bodyContent = bodyContent.replace(/<h1>```html<\/h1>/gi, '');
+                    bodyContent = bodyContent.replace(/```html/g, '');
+                }
                 return `<?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE html>
         <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="zh-CN">
@@ -675,10 +986,12 @@
         </html>`;
             }
 
+            // ---------- 解析 EPUB ----------
             async function loadEpub(zipData) {
                 const zip = await JSZip.loadAsync(zipData);
                 state.zipData = zip;
                 state.originalFiles = {};
+                state.styleCssContent = null;
 
                 const files = Object.keys(zip.files);
                 for (const fname of files) {
@@ -687,8 +1000,20 @@
                         try {
                             const content = await file.async('string');
                             state.originalFiles[fname] = content;
+                            if (fname === 'OEBPS/style.css' || fname === 'style.css') {
+                                state.styleCssContent = content;
+                            }
                         } catch (e) {
                             console.warn('跳过文件:', fname, e);
+                        }
+                    }
+                }
+
+                if (!state.styleCssContent) {
+                    for (const fname of Object.keys(state.originalFiles)) {
+                        if (fname.endsWith('style.css')) {
+                            state.styleCssContent = state.originalFiles[fname];
+                            break;
                         }
                     }
                 }
@@ -709,8 +1034,8 @@
 
                 const chapters = [];
 
-                let coverContent = state.originalFiles['OEBPS/text/cover.xhtml'] || state.originalFiles['text/cover
-                    .xhtml'];
+                // ---- 封面 ----
+                let coverContent = state.originalFiles['OEBPS/text/cover.xhtml'] || state.originalFiles['text/cover.xhtml'];
                 if (!coverContent) {
                     for (const fname of Object.keys(state.originalFiles)) {
                         if (fname.endsWith('cover.xhtml')) {
@@ -719,9 +1044,7 @@
                         }
                     }
                 }
-                if (!coverContent) {
-                    coverContent = buildDefaultCover();
-                }
+                if (!coverContent) coverContent = buildDefaultCover();
                 chapters.push({
                     id: 'cover',
                     name: '封面',
@@ -730,8 +1053,8 @@
                     isSpecial: true,
                 });
 
-                let prologueContent = state.originalFiles['OEBPS/text/ch000.xhtml'] || state.originalFiles['text/ch000
-                    .xhtml'];
+                // ---- 开场白 ----
+                let prologueContent = state.originalFiles['OEBPS/text/ch000.xhtml'] || state.originalFiles['text/ch000.xhtml'];
                 if (!prologueContent) {
                     for (const fname of Object.keys(state.originalFiles)) {
                         if (fname.endsWith('ch000.xhtml')) {
@@ -740,9 +1063,7 @@
                         }
                     }
                 }
-                if (!prologueContent) {
-                    prologueContent = buildDefaultPrologue();
-                }
+                if (!prologueContent) prologueContent = buildDefaultPrologue();
                 chapters.push({
                     id: 'prologue',
                     name: '开场白',
@@ -751,6 +1072,7 @@
                     isSpecial: true,
                 });
 
+                // ---- 轮次文件 ----
                 const roundFiles = [];
                 for (const fname of Object.keys(state.originalFiles)) {
                     const base = fname.split('/').pop();
@@ -832,6 +1154,9 @@
                 state.redoStack = [];
                 state.hasTextDir = true;
 
+                // 清除旧草稿（因为导入了新的文件）
+                clearDraft();
+
                 renderChapterList();
                 renderEditor();
                 updateNavButtons();
@@ -841,38 +1166,266 @@
                 statusRight.textContent = `文件: ${Object.keys(state.originalFiles).length} 个`;
             }
 
+            // ---------- 渲染 ----------
             function renderChapterList() {
                 const list = chapterList;
                 list.innerHTML = '';
                 state.chapters.forEach((ch, idx) => {
                     const div = document.createElement('div');
-                    div.className = 'chapter-item' + (idx === state.currentIndex ? ' active' : '');
+                    div.className = 'chapter-item';
+                    if (idx === state.currentIndex && !state.selectMode) {
+                        div.classList.add('active');
+                    }
+                    if (state.selectMode && state.selectedIndices.includes(idx)) {
+                        div.classList.add('selected');
+                    }
                     div.dataset.index = idx;
+
+                    const indexSpan = document.createElement('span');
+                    indexSpan.className = 'ch-index';
+                    indexSpan.textContent = idx + 1;
+
                     const cb = document.createElement('input');
                     cb.type = 'checkbox';
                     cb.className = 'ch-check';
                     cb.dataset.index = idx;
-                    if (ch.isSpecial) {
+                    if (isSpecialChapter(idx)) {
                         cb.disabled = true;
                     }
+                    if (state.selectMode) {
+                        cb.classList.add('show');
+                        cb.checked = state.selectedIndices.includes(idx);
+                    }
+
                     const nameSpan = document.createElement('span');
                     nameSpan.className = 'ch-name';
                     nameSpan.textContent = ch.name;
+
                     const badge = document.createElement('span');
                     badge.className = 'ch-badge';
                     badge.textContent = ch.filename;
+
+                    div.appendChild(indexSpan);
                     div.appendChild(cb);
                     div.appendChild(nameSpan);
                     div.appendChild(badge);
-                    div.addEventListener('click', (e) => {
-                        if (e.target.tagName === 'INPUT') return;
-                        selectChapter(idx);
+
+                    // ---------- 点击/触摸事件 ----------
+                    let pressTimer = null;
+                    let isPressed = false;
+                    let longPressTriggered = false;
+
+                    const startPress = (e) => {
+                        if (isSpecialChapter(idx)) return;
+                        if (state.selectMode) {
+                            // 选择模式下点击切换选中
+                            toggleSelectIndex(idx);
+                            return;
+                        }
+                        isPressed = true;
+                        longPressTriggered = false;
+                        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                        pressTimer = setTimeout(() => {
+                            if (isPressed) {
+                                longPressTriggered = true;
+                                enterSelectMode(idx);
+                            }
+                        }, 600);
+                    };
+
+                    const endPress = (e) => {
+                        isPressed = false;
+                        if (pressTimer) {
+                            clearTimeout(pressTimer);
+                            pressTimer = null;
+                        }
+                        if (!longPressTriggered && !state.selectMode) {
+                            // 普通点击：切换章节
+                            selectChapter(idx);
+                        }
+                    };
+
+                    const movePress = (e) => {
+                        // 如果手指移动了，取消长按
+                        if (pressTimer) {
+                            clearTimeout(pressTimer);
+                            pressTimer = null;
+                        }
+                    };
+
+                    // 鼠标事件
+                    div.addEventListener('mousedown', startPress);
+                    div.addEventListener('mouseup', endPress);
+                    div.addEventListener('mouseleave', (e) => {
+                        isPressed = false;
+                        if (pressTimer) {
+                            clearTimeout(pressTimer);
+                            pressTimer = null;
+                        }
                     });
-                    cb.addEventListener('click', (e) => e.stopPropagation());
+
+                    // 触摸事件
+                    div.addEventListener('touchstart', (e) => {
+                        startPress(e);
+                    }, { passive: true });
+                    div.addEventListener('touchend', (e) => {
+                        endPress(e);
+                    }, { passive: true });
+                    div.addEventListener('touchmove', movePress, { passive: true });
+
+                    // 复选框事件
+                    cb.addEventListener('change', (e) => {
+                        e.stopPropagation();
+                        if (cb.checked) {
+                            if (!state.selectedIndices.includes(idx)) {
+                                state.selectedIndices.push(idx);
+                            }
+                        } else {
+                            state.selectedIndices = state.selectedIndices.filter(i => i !== idx);
+                        }
+                        updateSelectionUI();
+                    });
+
                     list.appendChild(div);
                 });
+                updateSelectionUI();
             }
 
+            // ---------- 选择模式 ----------
+            function enterSelectMode(startIdx) {
+                state.selectMode = true;
+                state.selectedIndices = [startIdx];
+                // 清空之前的选择状态
+                exitSelectBtn.style.display = 'block';
+                selectionHint.classList.add('show');
+                deleteBtn.disabled = false;
+                renderChapterList();
+                updateSelectionUI();
+                statusLeft.textContent = `📌 选择模式: 已选 1 章`;
+            }
+
+            function exitSelectMode() {
+                state.selectMode = false;
+                state.selectedIndices = [];
+                exitSelectBtn.style.display = 'none';
+                selectionHint.classList.remove('show');
+                deleteBtn.disabled = true;
+                renderChapterList();
+                statusLeft.textContent = state.chapters.length ? `${state.chapters.length} 章` : '就绪';
+            }
+
+            function toggleSelectIndex(idx) {
+                if (isSpecialChapter(idx)) return;
+                const index = state.selectedIndices.indexOf(idx);
+                if (index === -1) {
+                    state.selectedIndices.push(idx);
+                } else {
+                    state.selectedIndices = state.selectedIndices.filter(i => i !== idx);
+                }
+                renderChapterList();
+                updateSelectionUI();
+            }
+
+            function selectRange(startIdx, endIdx) {
+                // 清除之前的选择，选中范围内的所有章节（不包括特殊章节）
+                state.selectedIndices = [];
+                const min = Math.min(startIdx, endIdx);
+                const max = Math.max(startIdx, endIdx);
+                for (let i = min; i <= max; i++) {
+                    if (!isSpecialChapter(i)) {
+                        state.selectedIndices.push(i);
+                    }
+                }
+                renderChapterList();
+                updateSelectionUI();
+            }
+
+            function updateSelectionUI() {
+                const count = state.selectedIndices.filter(i => !isSpecialChapter(i)).length;
+                selectedCount.textContent = count;
+                deleteBtn.disabled = count === 0 || !state.selectMode;
+                if (state.selectMode) {
+                    selectionHint.classList.add('show');
+                    exitSelectBtn.style.display = 'block';
+                }
+                // 更新所有复选框状态
+                document.querySelectorAll('.ch-check').forEach(cb => {
+                    const idx = parseInt(cb.dataset.index);
+                    if (state.selectMode) {
+                        cb.classList.add('show');
+                        cb.checked = state.selectedIndices.includes(idx);
+                    } else {
+                        cb.classList.remove('show');
+                        cb.checked = false;
+                    }
+                });
+                // 更新选中样式
+                document.querySelectorAll('.chapter-item').forEach(el => {
+                    const idx = parseInt(el.dataset.index);
+                    if (state.selectMode && state.selectedIndices.includes(idx)) {
+                        el.classList.add('selected');
+                    } else {
+                        el.classList.remove('selected');
+                    }
+                    if (idx === state.currentIndex && !state.selectMode) {
+                        el.classList.add('active');
+                    } else if (!state.selectMode) {
+                        el.classList.remove('active');
+                    }
+                });
+                if (state.selectMode) {
+                    statusLeft.textContent = `📌 已选 ${count} 章`;
+                }
+            }
+
+            function deleteSelected() {
+                if (!state.selectMode || state.selectedIndices.length === 0) return;
+                const indices = state.selectedIndices
+                    .filter(i => !isSpecialChapter(i))
+                    .sort((a, b) => b - a);
+                if (indices.length === 0) {
+                    alert('封面和开场白不可删除');
+                    return;
+                }
+                if (!confirm(`确定要删除选中的 ${indices.length} 个章节吗？`)) return;
+
+                saveCurrentContent();
+                pushUndo();
+                for (const idx of indices) {
+                    state.chapters.splice(idx, 1);
+                }
+                reindexChapters();
+                if (state.currentIndex >= state.chapters.length) {
+                    state.currentIndex = state.chapters.length - 1;
+                }
+                if (state.currentIndex < 0) state.currentIndex = 0;
+                exitSelectMode();
+                renderChapterList();
+                renderEditor();
+                updateNavButtons();
+                state.isDirty = true;
+                saveDraft();
+            }
+
+            function selectAllChapters() {
+                if (!state.selectMode) {
+                    // 先进入选择模式
+                    state.selectMode = true;
+                    exitSelectBtn.style.display = 'block';
+                    selectionHint.classList.add('show');
+                }
+                state.selectedIndices = [];
+                state.chapters.forEach((ch, idx) => {
+                    if (!isSpecialChapter(idx)) {
+                        state.selectedIndices.push(idx);
+                    }
+                });
+                renderChapterList();
+                updateSelectionUI();
+            }
+
+            // ---------- 编辑器 ----------
             function renderEditor() {
                 const idx = state.currentIndex;
                 if (!state.chapters.length || idx < 0 || idx >= state.chapters.length) {
@@ -921,6 +1474,10 @@
                     saveCurrentContent();
                 }
                 state.currentIndex = idx;
+                // 如果处于选择模式，退出
+                if (state.selectMode) {
+                    exitSelectMode();
+                }
                 renderChapterList();
                 renderEditor();
                 updateNavButtons();
@@ -936,6 +1493,7 @@
                     pushUndo();
                     state.chapters[idx].content = content;
                     state.isDirty = true;
+                    saveDraft();
                 }
             }
 
@@ -943,9 +1501,10 @@
                 const idx = state.currentIndex;
                 prevBtn.disabled = idx <= 0;
                 nextBtn.disabled = idx >= state.chapters.length - 1;
-                counter.textContent = `${idx + 1} / ${state.chapters.length}`;
+                counter.textContent = `${idx + 1}/${state.chapters.length}`;
             }
 
+            // ---------- 章节管理 ----------
             function addChapter() {
                 if (!state.chapters.length) return;
                 saveCurrentContent();
@@ -984,10 +1543,13 @@
 
                 reindexChapters();
                 state.currentIndex = state.chapters.length - 1;
+                // 如果处于选择模式，退出
+                if (state.selectMode) exitSelectMode();
                 renderChapterList();
                 renderEditor();
                 updateNavButtons();
                 state.isDirty = true;
+                saveDraft();
             }
 
             function reindexChapters() {
@@ -1008,32 +1570,6 @@
                         } catch (e) { /* ignore */ }
                     }
                 });
-            }
-
-            function deleteSelected() {
-                const cbs = document.querySelectorAll('.ch-check:checked:not(:disabled)');
-                if (!cbs.length) {
-                    alert('请先勾选要删除的章节（封面和开场白不可删除）');
-                    return;
-                }
-                const indices = Array.from(cbs)
-                    .map(cb => parseInt(cb.dataset.index))
-                    .sort((a, b) => b - a);
-
-                saveCurrentContent();
-                pushUndo();
-                for (const idx of indices) {
-                    state.chapters.splice(idx, 1);
-                }
-                reindexChapters();
-                if (state.currentIndex >= state.chapters.length) {
-                    state.currentIndex = state.chapters.length - 1;
-                }
-                if (state.currentIndex < 0) state.currentIndex = 0;
-                renderChapterList();
-                renderEditor();
-                updateNavButtons();
-                state.isDirty = true;
             }
 
             function renameChapter() {
@@ -1060,6 +1596,7 @@
                     renderChapterList();
                     renderEditor();
                     state.isDirty = true;
+                    saveDraft();
                 }
             }
 
@@ -1075,11 +1612,9 @@
 
                 const newZip = new JSZip();
 
-                // 1. mimetype（第一个文件，不压缩）
                 const mimetypeBlob = new Blob(['application/epub+zip'], { type: 'application/octet-stream' });
                 newZip.file('mimetype', mimetypeBlob, { compression: 'STORE' });
 
-                // 2. META-INF/container.xml
                 const containerXml = `<?xml version="1.0" encoding="UTF-8"?>
         <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
           <rootfiles>
@@ -1088,8 +1623,7 @@
         </container>`;
                 newZip.file('META-INF/container.xml', containerXml);
 
-                // 3. 复制资源文件（style.css、images/）
-                const skipFiles = [
+                const skipFilePatterns = [
                     'mimetype',
                     'META-INF/container.xml',
                     'OEBPS/content.opf',
@@ -1100,31 +1634,10 @@
                 ];
                 const chapterPattern = /^OEBPS\/text\/ch\d{3}\.xhtml$/;
 
-                // 先把 style.css 单独拿出来，确保复制
-                let styleCssContent = state.originalFiles['OEBPS/style.css'] || state.originalFiles['style.css'];
-                if (styleCssContent) {
-                    newZip.file('OEBPS/style.css', styleCssContent);
-                } else {
-                    // 如果没找到 style.css，生成一个默认的
-                    const defaultCss = `@charset "utf-8";
-        body { font-family: serif; line-height: 1.85; margin: 0 6%; text-align: justify; -webkit-hyphens: none; hyphens: none; }
-        h1 { font-size: 1.35em; font-weight: normal; line-height: 1.5; margin: 2.2em 0 .3em; text-align: left; }
-        .meta { font-size: .78em; color: #777; margin: 0 0 2.4em; padding-bottom: .8em; border-bottom: 1px solid #ddd; }
-        .note { font-size: .82em; color: #777; margin: 0 0 2em; }
-        .who { font-size: .72em; color: #999; letter-spacing: .12em; margin: 1.8em 0 .35em; }
-        p { margin: 0 0 .85em; text-indent: 0; }
-        .me { color: #555; font-size: .93em; border-left: 3px solid #ddd; padding-left: .9em; margin-left: 0; }
-        .me .who { color: #a06a20; }`;
-                    newZip.file('OEBPS/style.css', defaultCss);
-                }
-
-                // 复制其他资源文件（images/ 等）
                 for (const fname of Object.keys(state.originalFiles)) {
-                    const base = fname.split('/').pop();
-                    if (skipFiles.includes(fname)) continue;
+                    if (skipFilePatterns.includes(fname)) continue;
                     if (chapterPattern.test(fname)) continue;
-                    if (fname === 'OEBPS/style.css') continue; // 已经处理了
-                    if (fname === 'style.css') continue; // 已经处理了
+                    if (fname === 'OEBPS/style.css' || fname === 'style.css') continue;
 
                     try {
                         const file = state.zipData.files[fname];
@@ -1142,27 +1655,31 @@
                     }
                 }
 
-                // 4. 添加编辑后的章节文件
+                let styleContent = state.styleCssContent;
+                if (!styleContent) {
+                    styleContent = `@charset "utf-8";
+        body { font-family: serif; line-height: 1.85; margin: 0 6%; text-align: justify; -webkit-hyphens: none; hyphens: none; }
+        h1 { font-size: 1.35em; font-weight: normal; line-height: 1.5; margin: 2.2em 0 .3em; text-align: left; }
+        .meta { font-size: .78em; color: #777; margin: 0 0 2.4em; padding-bottom: .8em; border-bottom: 1px solid #ddd; }
+        .note { font-size: .82em; color: #777; margin: 0 0 2em; }
+        .who { font-size: .72em; color: #999; letter-spacing: .12em; margin: 1.8em 0 .35em; }
+        p { margin: 0 0 .85em; text-indent: 0; }
+        .me { color: #555; font-size: .93em; border-left: 3px solid #ddd; padding-left: .9em; margin-left: 0; }
+        .me .who { color: #a06a20; }
+        .ta { color: #333; font-size: .93em; border-left: 3px solid #eee; padding-left: .9em; margin-left: 0; }
+        .ta .who { color: #2a6b8c; }`;
+                }
+                newZip.file('OEBPS/style.css', styleContent);
+
                 for (const ch of state.chapters) {
-                    const path = 'OEBPS/text/' + ch.filename;
-                    newZip.file(path, ch.content);
+                    newZip.file('OEBPS/text/' + ch.filename, ch.content);
                 }
 
-                // 5. content.opf
-                const opfContent = generateOpf();
-                newZip.file('OEBPS/content.opf', opfContent);
+                newZip.file('OEBPS/content.opf', generateOpf());
+                newZip.file('OEBPS/nav.xhtml', generateNav());
+                newZip.file('OEBPS/toc.ncx', generateToc());
 
-                // 6. nav.xhtml
-                const navContent = generateNav();
-                newZip.file('OEBPS/nav.xhtml', navContent);
-
-                // 7. toc.ncx
-                const tocContent = generateToc();
-                newZip.file('OEBPS/toc.ncx', tocContent);
-
-                // 8. 导出 - 明确指定 MIME 类型
-                const blob = await newZip.generateAsync({ type: 'blob' }, { mimeType: 'application/epub+zip' });
-                // 确保文件后缀是 .epub
+                const blob = await newZip.generateAsync({ type: 'blob' });
                 saveAs(blob, 'edited.epub');
                 statusLeft.textContent = '✅ 导出成功！';
                 state.isDirty = false;
@@ -1216,8 +1733,7 @@
             function generateNav() {
                 let items = '';
                 for (const ch of state.chapters) {
-                    const href = 'text/' + ch.filename;
-                    items += `<li><a href="${href}">${ch.name}</a></li>\n`;
+                    items += `<li><a href="text/${ch.filename}">${ch.name}</a></li>\n`;
                 }
                 return `<?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE html>
@@ -1238,11 +1754,10 @@
                 let navPoints = '';
                 for (let i = 0; i < state.chapters.length; i++) {
                     const ch = state.chapters[i];
-                    const src = 'text/' + ch.filename;
                     navPoints += `
         <navPoint id="n${i+1}" playOrder="${i+1}">
           <navLabel><text>${ch.name}</text></navLabel>
-          <content src="${src}"/>
+          <content src="text/${ch.filename}"/>
         </navPoint>`;
                 }
                 return `<?xml version="1.0" encoding="UTF-8"?>
@@ -1257,6 +1772,7 @@
         </ncx>`;
             }
 
+            // ---------- 模式切换 ----------
             function setMode(mode) {
                 if (state.mode === mode) return;
                 if (state.mode === 'source') {
@@ -1272,7 +1788,24 @@
                 renderEditor();
             }
 
+            // ---------- 草稿自动恢复 ----------
+            function checkDraftOnLoad() {
+                const data = loadDraftFromStorage();
+                if (data && data.chapters && data.chapters.length > 0) {
+                    if (confirm('检测到上次编辑的草稿（' + data.chapters.length + ' 章），是否恢复？\n点击"确定"恢复，点击"取消"忽略。')) {
+                        restoreDraft(data);
+                        return true;
+                    } else {
+                        // 用户选择忽略，清除草稿
+                        clearDraft();
+                        return false;
+                    }
+                }
+                return false;
+            }
+
             // ---------- 事件绑定 ----------
+            // 导入 EPUB
             $('upload-btn').addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', async (e) => {
                 const file = e.target.files[0];
@@ -1288,6 +1821,7 @@
                 fileInput.value = '';
             });
 
+            // 拖拽导入
             document.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 dropOverlay.classList.add('show');
@@ -1316,6 +1850,42 @@
                 }
             });
 
+            // 草稿相关
+            $('save-draft-btn').addEventListener('click', () => {
+                if (!state.chapters.length) {
+                    alert('没有可保存的内容');
+                    return;
+                }
+                if (state.mode === 'source') {
+                    saveCurrentContent();
+                }
+                // 先保存到 localStorage
+                saveDraft();
+                // 再导出 JSON 文件
+                exportDraftFile();
+            });
+
+            $('load-draft-btn').addEventListener('click', () => {
+                // 先尝试从 localStorage 恢复
+                const data = loadDraftFromStorage();
+                if (data && data.chapters && data.chapters.length > 0) {
+                    if (confirm('检测到本地草稿（' + data.chapters.length + ' 章），是否恢复？')) {
+                        restoreDraft(data);
+                        return;
+                    }
+                }
+                // 如果没有本地草稿或用户取消，则从文件导入
+                draftInput.click();
+            });
+
+            draftInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                importDraftFile(file);
+                draftInput.value = '';
+            });
+
+            // 侧边栏
             let sidebarOpen = true;
             $('toggle-sidebar-btn').addEventListener('click', () => {
                 sidebarOpen = !sidebarOpen;
@@ -1326,6 +1896,7 @@
                 sidebar.classList.add('collapsed');
             });
 
+            // 导航
             prevBtn.addEventListener('click', () => {
                 if (state.currentIndex > 0) selectChapter(state.currentIndex - 1);
             });
@@ -1333,18 +1904,25 @@
                 if (state.currentIndex < state.chapters.length - 1) selectChapter(state.currentIndex + 1);
             });
 
+            // 撤销/重做
             undoBtn.addEventListener('click', undo);
             redoBtn.addEventListener('click', redo);
 
+            // 模式切换
             $('mode-preview').addEventListener('click', () => setMode('preview'));
             $('mode-source').addEventListener('click', () => setMode('source'));
 
+            // 章节管理
             $('add-chapter-btn').addEventListener('click', addChapter);
             $('delete-selected-btn').addEventListener('click', deleteSelected);
+            $('select-all-btn').addEventListener('click', selectAllChapters);
+            $('exit-select-btn').addEventListener('click', exitSelectMode);
             $('rename-chapter-btn').addEventListener('click', renameChapter);
 
+            // 导出
             exportBtn.addEventListener('click', exportEpub);
 
+            // 快捷键
             document.addEventListener('keydown', (e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                     e.preventDefault();
@@ -1360,8 +1938,15 @@
                         saveCurrentContent();
                         statusLeft.textContent = '✅ 已保存';
                         setTimeout(() => {
-                            statusLeft.textContent = state.chapters.length ? `${state.chapters.length} 章` : '就绪';
+                            if (!state.isDirty) {
+                                statusLeft.textContent = state.chapters.length ? `${state.chapters.length} 章` : '就绪';
+                            }
                         }, 1500);
+                    }
+                }
+                if (e.key === 'Escape') {
+                    if (state.selectMode) {
+                        exitSelectMode();
                     }
                 }
                 if (e.key === 'ArrowLeft' && !e.target.closest('input, textarea, [contenteditable]')) {
@@ -1372,12 +1957,18 @@
                 }
             });
 
+            // 点击外部保存
             document.addEventListener('click', (e) => {
                 if (state.mode === 'source' && !e.target.closest('#editor-container')) {
                     saveCurrentContent();
                 }
+                // 点击侧边栏外退出选择模式
+                if (state.selectMode && !e.target.closest('#sidebar')) {
+                    // 不自动退出，防止误触
+                }
             });
 
+            // 编辑器输入自动保存
             container.addEventListener('input', () => {
                 if (state.mode === 'source') {
                     const idx = state.currentIndex;
@@ -1393,11 +1984,19 @@
                 }
             });
 
-            console.log('EPUB 分章编辑器 v3.3 已加载');
-            statusLeft.textContent = '就绪，请导入 EPUB 文件';
+            // ---------- 初始化 ----------
+            console.log('EPUB 分章编辑器 v3.4 已加载');
+
+            // 检查是否有草稿
+            const hasDraft = checkDraftOnLoad();
+
+            if (!hasDraft) {
+                statusLeft.textContent = '就绪，请导入 EPUB 文件或恢复草稿';
+            }
 
             window.__state = state;
             window.__save = saveCurrentContent;
+            window.__clearDraft = clearDraft;
 
         })();
     </script>
